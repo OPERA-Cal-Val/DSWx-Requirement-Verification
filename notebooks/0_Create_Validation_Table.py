@@ -45,4 +45,4 @@ geojson_path
 df.to_file(geojson_path, driver='GeoJSON')
 
 # %%
-df.to_csv(geojson_path.with_suffix('.csv'), index_label=False)
+df.to_csv(geojson_path.with_suffix('.csv'), index=False)
