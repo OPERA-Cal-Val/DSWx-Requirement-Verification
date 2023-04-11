@@ -92,7 +92,7 @@ def generate_linked_id_table_for_classified_imagery() -> gpd.GeoDataFrame:
     """
     df_planet = get_planet_image_table()
     df_vd = get_classified_planet_table()
-    df_id = pd.merge(df_vd[['image_name', 'geometry']],
+    df_id = pd.merge(df_vd[['image_name', 'geometry', 'water_stratum']],
                      df_planet[['site_name', 'image_name', 'collocated_dswx']],
                      on='image_name')
     df_id = df_id.rename(columns={'image_name': 'planet_id',
@@ -105,7 +105,7 @@ def generate_linked_id_table_for_classified_imagery() -> gpd.GeoDataFrame:
     df_id['validation_dataset_url'] = df_id.planet_id.map(get_s3_url_of_classified_image)
 
     columns = ['site_name', 'planet_id', 'dswx_id', 'hls_id', 'dswx_urls',
-               'validation_dataset_url', 'geometry']
+               'validation_dataset_url', 'water_stratum', 'geometry']
     df_id = df_id[columns]
     return df_id
 
@@ -113,3 +113,17 @@ def generate_linked_id_table_for_classified_imagery() -> gpd.GeoDataFrame:
 def get_path_of_validation_geojson():
     data_dir = Path(__file__).parent.resolve() / 'data'
     return data_dir / 'validation_table.geojson'
+
+
+def get_localized_validation_table():
+    local_geojson_path = get_path_of_validation_geojson()
+    return gpd.read_file(local_geojson_path)
+
+
+def get_validation_metadata_by_site_name(site_name: str) -> pd.DataFrame:
+    df_val = get_localized_validation_table()
+    df_val_site = df_val[df_val.site_name == site_name].reset_index(drop=True)
+    n = df_val_site.shape[0]
+    if n != 1:
+        raise ValueError('The site name did not yeild a unique row in the localized metadata')
+    return df_val_site

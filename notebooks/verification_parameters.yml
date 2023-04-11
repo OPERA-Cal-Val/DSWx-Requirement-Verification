@@ -1,7 +1,6 @@
-verification_data:
-  data_dir: out/dswx_hls
 verification_parameters:
   pixels_sampled_per_trial: 1000
   pixels_distributed_with_respect_to_val: True
   number_of_trials: 100
-  confidence_classes: []
+  confidence_classes_to_strictly_include:
+  data_dir: out/dswx_hls

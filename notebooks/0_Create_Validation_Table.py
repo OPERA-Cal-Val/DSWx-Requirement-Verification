@@ -14,6 +14,8 @@
 # ---
 
 # %% [markdown]
+# # Introduction
+#
 # The purposes of this notebook is to regenerate the Validation Table that links the following datasets:
 #
 # 1. Classified Planet Imagery (and their urls)
@@ -24,11 +26,11 @@
 #
 # **Note**: this notebook requires JPL VPN access and a `.env` file created as described in the readme of this repository! Although all the datasets are located in public buckets, the database that makes the searching of these datasets possible is not.
 
-# %% [markdown]
-# # Generate a new Validation Table
-
 # %%
 from dswx_verification import generate_linked_id_table_for_classified_imagery, get_path_of_validation_geojson
+
+# %% [markdown]
+# # Generate a new Validation Table
 
 # %%
 df = generate_linked_id_table_for_classified_imagery()

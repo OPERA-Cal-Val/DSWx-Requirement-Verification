@@ -30,6 +30,8 @@ dependencies:
  - scikit-learn
  - elasticsearch
  - elasticsearch-dsl
+ - pyyaml
+ - pydantic
  - click
  - flake8
  - flake8-blind-except
@@ -37,4 +39,4 @@ dependencies:
  - flake8-import-order
  - pystac-client
  - python-dotenv
- - dem_stitcher>=2.4.0
+ - dem_stitcher
