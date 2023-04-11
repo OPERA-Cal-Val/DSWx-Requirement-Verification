@@ -46,6 +46,7 @@ __pycache__/
 *.tif
 *.tiff
 *.vrt
+*.json
 
 # Notebooks
 *.ipynb
