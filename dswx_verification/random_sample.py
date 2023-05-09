@@ -2,7 +2,7 @@ import numpy as np
 
 
 def get_equal_samples_per_label(flat_array_of_labels: np.ndarray,
-                                labels: list,
+                                target_labels: list,
                                 total_target_sample_size: int) -> list:
     """Generate the total samples per label in labels given the target sample size. If there are less labels than the
     target_sample_size, then we only sample the maximum number of labels (i.e. the available labels)
@@ -11,8 +11,8 @@ def get_equal_samples_per_label(flat_array_of_labels: np.ndarray,
     ----------
     flat_array_of_labels : np.ndarray
         Array (with only one dimension) of labels
-    labels : list
-        Unique list of labels
+    target_labels : list
+        Unique list of labels which will be sampled from
     total_target_sample_size : int
 
     Returns
@@ -20,13 +20,13 @@ def get_equal_samples_per_label(flat_array_of_labels: np.ndarray,
     list
        The number of samples to select with the same index of the corresponding label in labels
     """
-    desired_sample_size_per_label = int(np.ceil(total_target_sample_size / len(labels)))
+    desired_sample_size_per_label = int(np.ceil(total_target_sample_size / len(target_labels)))
 
-    if len(labels) != len(set(labels)):
+    if len(target_labels) != len(set(target_labels)):
         raise ValueError('Each label in "labels" should be unique"')
 
     samples_per_label = []
-    for label in labels:
+    for label in target_labels:
         n_pixels_per_label = (flat_array_of_labels == label).sum()
         n_pixels_to_sample = min(desired_sample_size_per_label, n_pixels_per_label)
         samples_per_label.append(n_pixels_to_sample)
