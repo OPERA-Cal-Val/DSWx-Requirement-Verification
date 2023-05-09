@@ -4,3 +4,5 @@ verification_parameters:
   number_of_trials: 100
   data_dir: out/dswx_hls
   confidence_classes_to_strictly_include:
+presentation_parameters:
+  presentation_dir: presentation_material
