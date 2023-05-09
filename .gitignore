@@ -47,6 +47,22 @@ __pycache__/
 *.tiff
 *.vrt
 *.json
+*.geojson
+
+# plots
+*.png
+
+# Latex
+*.tex
+
+# Shapefiles
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+
+
 
 # Notebooks
 *.ipynb
