@@ -30,7 +30,8 @@ from dswx_verification import (get_validation_metadata_by_site_name,
                                get_number_of_pixels_in_hectare,
                                get_equal_samples_per_label,
                                generate_random_indices_for_classes,
-                               get_all_metrics_for_one_trial)
+                               get_all_metrics_for_one_trial,
+                               get_geopandas_features_from_array)
 from dswx_verification.data_models import VerificationParameters
 from dswx_verification.constants import OSW_ACCURACY_REQ, PSW_ACCURACY_REQ
 import yaml
@@ -81,6 +82,7 @@ df_site_meta
 # %%
 dswx_id = df_site_meta['dswx_id'][0]
 planet_id = df_site_meta['planet_id'][0]
+hls_id = df_site_meta['hls_id'][0]
 
 # %% [markdown]
 # ## Generate directories for site name
@@ -231,6 +233,54 @@ y_dswx_trails = [y_dswx[s] for s in sample_indices]
 y_val_trials = [y_val[s] for s in sample_indices]
 
 # %% [markdown]
+# ## Serialize a set of samples
+#
+# For posterity - we select the first trial and use the samples from that to serialize into a vector file. Each sample from the trial is given a label `1, ..., total_samples`.
+
+# %%
+trial_id = 0
+samples = sample_indices[trial_id]
+
+# %% [markdown]
+# Want labels to start at 1.
+
+# %%
+idx2dswx = {(k+1): label for (k, label) in enumerate(y_dswx[samples])}
+idx2val = {(k+1): label for (k, label) in enumerate(y_val[samples])}
+
+# %% [markdown]
+# `X_samples` is a raster in which each pixel sampled is given a unique label.
+
+# %%
+X_samples = np.zeros(X_dswx_c.shape)
+temp = np.zeros(y_val.shape)
+
+temp[sample_indices[trial_id]] = list(idx2dswx.keys())
+X_samples[~dswx_mask] = temp
+
+# %%
+features = get_geopandas_features_from_array(# Note 8 bits is not enough for 500 points
+                                             X_samples.astype(np.int32), 
+                                             transform=p_dswx_c['transform'],
+                                             mask=(X_samples==0),
+                                             label_name='sample_id'
+                                            )
+df_samples = gpd.GeoDataFrame.from_features(features, 
+                                            crs=p_dswx_c['crs'])
+df_samples['val_label'] = df_samples['sample_id'].map(lambda label: idx2dswx[label])
+df_samples['dswx_label'] = df_samples['sample_id'].map(lambda label: idx2val[label])
+df_samples.head()
+
+# %%
+fig, ax = plt.subplots()
+
+plot.show(X_val_r, transform=p_val_r['transform'], ax=ax, cmap=cmap, vmin=0, vmax=255, interpolation='none')
+df_samples.plot(ax=ax, color='green')
+
+# %%
+df_samples.to_file(site_dir / f'samples__{site_name}')
+
+# %% [markdown]
 # # Compute Metrics
 #
 # We are going to collect all the metrics by traversing through all the randomly selected pixels in each trial.
@@ -248,6 +298,9 @@ metrics_for_all_trials[0]
 # %%
 from pandas import json_normalize
 df_data_all_trials = pd.DataFrame(json_normalize(metrics_for_all_trials))
+# Want to specify metric refers to all classes if normalization of json did not occur
+columns_renamed = [f'{col}.All' if '.' not in col else col for col in df_data_all_trials.columns]
+df_data_all_trials.columns = columns_renamed
 df_data_all_trials.head()
 
 
@@ -255,7 +308,7 @@ df_data_all_trials.head()
 # We get the qualitative statistics (i.e. mean and standard deviation) for the various trials.
 
 # %%
-df_trials_agg = df_data_all_trials.aggregate(['mean', 'std'])
+df_trials_agg = df_data_all_trials.aggregate(['mean', 'std', 'median'])
 # includes new column with `*.std` and `*.mean`
 df_trials_agg = pd.DataFrame(json_normalize(df_trials_agg.to_dict()))
 stat_cols = list(df_trials_agg.columns)
@@ -293,11 +346,12 @@ print(f"PSW Requirement Passing: {psw_req_passed} (Acc: {(mu_psw * 100):1.2f}%)"
 # ## Rasters
 
 # %%
-raster_data_to_serialize = {f'cropped_dswx_{dswx_id}.tif': (X_dswx_c, p_dswx_c, dswx_colormap),
-                            f'validation_dataset_{site_name}.tif': (X_val, p_val, dswx_colormap),
-                            f'validation_dataset_rprj_{site_name}.tif': (X_val_r, p_val_r, dswx_colormap),
-                            f'validation_percent_osw_rprj_{site_name}.tif': (X_perc_r, p_perc_r, None), 
-                            f'dswx_mask_{site_name}.tif': (dswx_mask, p_dswx_c, None)}
+raster_data_to_serialize = {f'dswx__{dswx_id}.tif': (X_dswx, p_dswx, dswx_colormap),
+                            f'cropped-dswx__{dswx_id}.tif': (X_dswx_c, p_dswx_c, dswx_colormap),
+                            f'validation-dataset__{site_name}.tif': (X_val, p_val, dswx_colormap),
+                            f'validation-dataset-rprj__{site_name}.tif': (X_val_r, p_val_r, dswx_colormap),
+                            f'validation-percent-osw-rprj__{site_name}.tif': (X_perc_r, p_perc_r, None), 
+                            f'dswx-mask__{site_name}.tif': (dswx_mask, p_dswx_c, None)}
 
 def write_one(file_name: str, raster: np.ndarray, profile: dict, colormap: dict = None) -> str:
     out_path = site_dir / file_name
