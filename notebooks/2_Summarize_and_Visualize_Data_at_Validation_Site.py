@@ -400,15 +400,135 @@ with open(presentation_dir / 'requirements.tex', 'w') as f:
 # ## Area of Class Labels
 
 # %%
+C_val = 9
+C_dswx = 900
+C_ha = 0.0001
+area_data = [{'Type': 'Val',
+              'Frame (Posting)': 'Validation (3 m)',
+              'Class': 'OSW',
+              'Area (ha)': (X_val == 1).sum() * C_ha * C_val,
+              'Area ($\%$)': (X_val == 1).sum() / (X_val != 255).sum() * 100},
+             {'Type': 'Val',
+              'Frame (Posting)': 'Validation (3 m)',
+              'Class': 'NW',
+              'Area (ha)': (X_val == 0).sum() * C_ha * C_val,
+              'Area ($\%$)': (X_val == 0).sum() / (X_val != 255).sum() * 100},
+             {'Type': 'Val',
+              'Frame (Posting)': 'DSWx (30 m)',
+              'Class': 'OSW',
+              'Area (ha)': (X_val_r[~dswx_mask] == 1).sum() * C_ha * C_dswx,
+              'Area ($\%$)': (X_val_r[~dswx_mask] == 1).sum() / (~dswx_mask).sum() * 100},
+             {'Type': 'Val',
+              'Frame (Posting)': 'DSWx (30 m)',
+              'Class': 'PSW',
+              'Area (ha)': (X_val_r[~dswx_mask] == 2).sum() * C_ha * C_dswx,
+              'Area ($\%$)': (X_val_r[~dswx_mask] == 2).sum() / (~dswx_mask).sum() * 100
+             },
+             {'Type': 'Val',
+              'Frame (Posting)': 'DSWx (30 m)',
+              'Class': 'NW',
+              'Area (ha)': (X_val_r[~dswx_mask] == 0).sum() * C_ha * C_dswx,
+              'Area ($\%$)': (X_val_r[~dswx_mask] == 0).sum() / (~dswx_mask).sum() * 100
+             },
+             {'Type': 'DSWx',
+              'Frame (Posting)': 'DSWx (30 m)',
+              'Class': 'OSW',
+              'Area (ha)': (X_dswx_c[~dswx_mask] == 1).sum() * C_ha * C_dswx,
+              'Area ($\%$)': (X_dswx_c[~dswx_mask] == 1).sum() / (~dswx_mask).sum() * 100},
+             {'Type': 'DSWx',
+              'Frame (Posting)': 'DSWx (30 m)',
+              'Class': 'PSW',
+              'Area (ha)': (X_dswx_c[~dswx_mask] == 2).sum() * C_ha * C_dswx,
+              'Area ($\%$)': (X_dswx_c[~dswx_mask] == 2).sum() / (~dswx_mask).sum() * 100
+             },
+             {'Type': 'DSWx',
+              'Frame (Posting)': 'DSWx (30 m)',
+              'Class': 'NW',
+              'Area (ha)': (X_dswx_c[~dswx_mask] == 0).sum() * C_ha * C_dswx,
+              'Area ($\%$)': (X_dswx_c[~dswx_mask] == 0).sum() / (~dswx_mask).sum() * 100
+             }
+            ]
+df_area = pd.DataFrame(area_data)
+df_area
 
 # %%
+df_area_f = df_area.set_index(['Frame (Posting)', 'Type', 'Class'])
+df_area_f['Area (ha)'] = df_area_f['Area (ha)'].map(lambda num: f'{num:1.2f}')
+df_area_f['Area ($\%$)'] = df_area_f['Area ($\%$)'].map(lambda num: f'{num:1.2f}')
+df_area_f
+
+# %%
+latex = df_area_f.style.to_latex(multirow_align='t', hrules=True)
+with open(presentation_dir / 'areas.tex', 'w') as f:
+    f.write(latex)
 
 # %% [markdown]
 # ## Ommision and Commision Error
 
 # %%
+data = {key: val for (key, val) in metric_data.items()
+                if any(kw in key for kw in ['precision', 'recall'])}
+data
+
+# %%
+om_com_data
+
+
+# %%
+def format_label(label):
+    """get first letter for acronym"""
+    return ''.join(x[0]for x in label.split('_'))
+
+def format_metric(met):
+    return 'om' if met == 'precision' else 'co' 
+
+om_com_data = {f'{stat[0]}_{format_metric(met)}_{format_label(class_label)}': 100 - data.get(f'{met}.{class_label}.{stat}', np.nan) * 100
+              for class_label in ['Not_Water', 'Open_Surface_Water', 'Partial_Surface_Water']
+              for stat in ['mean', 'std']
+              for met in ['precision', 'recall']}
+om_com_data = {key: f'{val:1.2f}' for key, val in om_com_data.items()}
+om_com_data
+
+# %%
+table_data = {'Class': ['NW', 'OSW', 'PSW'],
+               'Commission Error ($\%$)': [om_com_data[f'm_co_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in ['NW', 'OSW', 'PSW']],
+               'Ommision Error ($\%$)': [om_com_data[f'm_om_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in ['NW', 'OSW', 'PSW']]
+              }
+
+df_om_co = pd.DataFrame(table_data)
+df_om_co.set_index('Class', inplace=True)
+df_om_co
+
+# %%
+latex = df_om_co.style.to_latex(multirow_align='t', hrules=True)
+with open(presentation_dir / 'omission_comission.tex', 'w') as f:
+    f.write(latex)
 
 # %% [markdown]
 # ## Ids for Validation Site
 
 # %%
+p_water_val = (X_val == 1).sum() / (X_val != 255).sum() * 100
+
+def strata_lookup(p_water):
+    if p_water <= 0:
+        return 'No water (stratum 0)'
+    if p_water <= .08:
+        return 'Low water (stratum 1)'
+    if p_water <= 2:
+        return 'Medium Water (stratum 2)'
+    return 'High water (stratum 3)'
+
+stratum_string = strata_lookup(p_water_val) + f' with {p_water_val:1.2f}$\%$ water in validation scene'
+stratum_string = '\\begin{itemize} \n\item ' + stratum_string + '\n\\end{itemize}'
+stratum_string
+
+# %%
+latex_0 = "\\begin{verbatim}\n" + "Planet ID: " + planet_id + "\n\\end{verbatim}\n"
+latex_1 = "\\begin{verbatim}\n" + "Site Name: " + site_name + "\n\\end{verbatim}\n"
+latex = latex_0 + latex_1 + stratum_string
+print(latex)
+
+# %%
+with open(presentation_dir / 'more_ids.tex', 'w') as f:
+    f.write(latex)
