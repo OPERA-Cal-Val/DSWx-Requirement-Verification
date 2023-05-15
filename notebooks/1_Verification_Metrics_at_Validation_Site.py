@@ -23,6 +23,8 @@
 # This notebook is the core of the validation. It reads validation data and the provisional products, compares the two via random sampling of the classes, and then serializes this information. Although there are plots in this notebook, the visualization, aggregation, and formatting is done in subsequent notebooks.
 
 # %%
+
+# %%
 from dswx_verification import (get_validation_metadata_by_site_name, 
                                reclassify_validation_dataset_to_dswx_frame, 
                                resample_label_into_percentage,
@@ -296,6 +298,9 @@ metrics_for_all_trials = list(starmap(get_all_metrics_for_one_trial, zip(tqdm(y_
 metrics_for_all_trials[0]
 
 # %%
+df_data_all_trials.columns
+
+# %%
 from pandas import json_normalize
 df_data_all_trials = pd.DataFrame(json_normalize(metrics_for_all_trials))
 # Want to specify metric refers to all classes if normalization of json did not occur
@@ -372,4 +377,4 @@ paths
 json_data = df_trials_agg.to_dict('records')[0]
 
 # %%
-json.dump(json_data, open(site_dir / 'trial_stats.json', 'w'))
+json.dump(json_data, open(site_dir / 'trial_stats.json', 'w'), indent=2)

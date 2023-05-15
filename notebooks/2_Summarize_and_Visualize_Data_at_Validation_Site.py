@@ -470,9 +470,6 @@ data = {key: val for (key, val) in metric_data.items()
                 if any(kw in key for kw in ['precision', 'recall'])}
 data
 
-# %%
-om_com_data
-
 
 # %%
 def format_label(label):
