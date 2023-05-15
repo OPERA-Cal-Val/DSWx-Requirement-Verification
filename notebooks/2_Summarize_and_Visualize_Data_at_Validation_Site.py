@@ -36,7 +36,7 @@ import yaml
 # %% [markdown]
 # # Parameters
 
-# %%
+# %% tags=["parameters"]
 site_name = '3_10'
 yaml_file = 'verification_parameters.yml'
 

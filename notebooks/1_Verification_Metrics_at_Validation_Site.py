@@ -56,7 +56,7 @@ import json
 #
 # We load a parameter file so it can be shared throughout the workflow.
 
-# %%
+# %% tags=["parameters"]
 site_name = '3_10'
 yaml_file = 'verification_parameters.yml'
 
@@ -296,9 +296,6 @@ metrics_for_all_trials = list(starmap(get_all_metrics_for_one_trial, zip(tqdm(y_
 
 # %%
 metrics_for_all_trials[0]
-
-# %%
-df_data_all_trials.columns
 
 # %%
 from pandas import json_normalize

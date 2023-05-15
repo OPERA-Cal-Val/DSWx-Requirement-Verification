@@ -13,7 +13,7 @@
 #     name: dswx_val
 # ---
 
-# %%
+# %% jupyter={"source_hidden": true}
 from dswx_verification.data_models import VerificationParameters
 from pathlib import Path
 import json
@@ -26,6 +26,9 @@ import yaml
 
 # %%
 yaml_file = 'verification_parameters.yml'
+
+# %% [markdown]
+# Read parameters
 
 # %%
 verif_params = VerificationParameters.from_yaml(yaml_file)
