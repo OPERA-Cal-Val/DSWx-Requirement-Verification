@@ -1,6 +1,6 @@
 # DSWx-Requirement-Verification
 
-This respository contains the workflow used to verify the DSWx suite. It is currently focused on DSWx-HLS, but will be updated along with the subsequent releases of DSWx products. At a high leve, the repository balances reproducibility and clarity. Here, "reproducibility" encompassing usability the software and version control; "clarity", the ability to visualize and communicate to the OPERA team and community the results of this verification exercise. Somewhere between these considerations is also the ability to inspect, experiment with, and modify this verification workflow to understand DSWx better.
+This respository contains the workflow used to verify the DSWx suite. It is currently focused on DSWx-HLS, but will be updated along with the subsequent releases of DSWx products.
 
 There are three components of the repository:
 
@@ -12,7 +12,6 @@ This repository is the descendent of:
 
 + https://github.com/OPERA-Cal-Val/DSWx-HLS-Requirement-Verification
 + https://github.com/OPERA-Cal-Val/DSWx-HLS-Verification-Latex-Presentation
-
 
 # Installation
 
@@ -27,30 +26,8 @@ Explore the notebooks using jupyter lab. It's *imperative* to run jupyter throug
 
 ## Latex
 
-Need a working version `latex` (specifically, the command line utility `latexmk`). This should be done without `conda`. Here are some instructions by platform: https://mg.readthedocs.io/latexmk.html. For Mac users, as the instructions suggest, we recommend installing [MacTex](https://tug.org/mactex/).
+For generating the pdf slides, a working version `latex` is required (specifically, the command line utility `latexmk`). This should be done *independently* of `conda/mamba`. Here are some instructions by platform: https://mg.readthedocs.io/latexmk.html. For Mac users, as the instructions suggest, we recommend installing [MacTex](https://tug.org/mactex/).
 
-# Setup for Validation Table Generation
-
-The `dswx_verification` package in this repository comes with a geojson table that links:
-
-1. Classified planet imagery
-2. DSWx products produced on the validation clone
-3. HLS IDs
-
-It also includes relevant urls for these datasets. The geometric extent of each row is determined by the classified planet imagery.
-
-First, one needs to have each of the following items completed to update a table (i.e. when a new validation clone is deployed) to get the latest datasets.
-
-1. JPL VPN access and to be connected to the VPN
-2. Have group access to the validation clone (that requires coordination with HySDS to be added to the appropriate LDAP group)
-3. Create a `.env` file with JPL credentials.
-
-Specifically, for 3. the `.env` should look like
-
-```
-ES_USERNAME='<JPL USERNAME>'
-ES_PASSWORD='<JPL PASSWORD>'
-```
 
 # Usage
 
@@ -76,3 +53,32 @@ Adjust the parameters within the yaml file as required. This will create `*.tex`
 ### B. Generating Beamer slides
 
 Navigate to the presentations directory as indicated in the `yaml` file.  Compile a latex document with `latexmk main.tex --pdf`
+
+# Setup for Validation Table Generation
+
+The `dswx_verification` package in this repository comes with a [geojson table](dswx_verification/data/validation_table.geojson) that links:
+
+1. Classified planet imagery
+2. DSWx products produced on the validation clone
+3. HLS IDs
+
+This table is ued for validation. Within this table, there are urls for these linked datasets so the workflow. The geometric extent of each row is determined by the classified subset of planet imagery.
+We currently run this [notebook](notebooks/0_Create_Validation_Table.py) to generate the table. This does not need to be run by a user, but is included to illustrate how we use link the various datasets used for the validation activities. However, there are instances when the table will need to be updated:
+
+- provisional products are reprocessed due to a software update and hence the provisional products are stored in a new location
+- an additional table (or potentially modification of the existing one) is required for newly released DSWx products
+
+To access the metadata from the Elastic Search database on the validation clone, there are additional steps that must be taken:
+
+1. JPL VPN access
+2. Have group access to the validation clone (that requires coordination with SDS to be added to the appropriate LDAP group)
+3. Create a `.env` file with JPL credentials.
+
+Specifically, for 3. the `.env` should look like
+
+```
+ES_USERNAME='<JPL USERNAME>'
+ES_PASSWORD='<JPL PASSWORD>'
+```
+
+Again, the workflow will work without having to generating a new table. This is included for the scenarios listed above.
