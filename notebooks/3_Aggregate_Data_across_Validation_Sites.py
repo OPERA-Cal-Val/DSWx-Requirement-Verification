@@ -13,7 +13,7 @@
 #     name: dswx_val
 # ---
 
-# %% jupyter={"source_hidden": true}
+# %%
 from dswx_verification.data_models import VerificationParameters
 from pathlib import Path
 import json
@@ -24,18 +24,18 @@ import yaml
 # %% [markdown]
 # # Parameters
 
-# %%
+# %% tags=["parameters"]
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]
-# Read parameters
+# ## Load parameters
 
 # %%
 verif_params = VerificationParameters.from_yaml(yaml_file)
 verif_params
 
 # %% [markdown]
-# # Presentation Dir
+# ## Path setup
 
 # %%
 with open(yaml_file) as f:
@@ -102,7 +102,7 @@ trial_data = [{'Class': class_label.replace('_', ' '),
 _ = [item.update({'Class': 'OSW $+$ PSW', 'Metric': 'Binary Acc. $(\%)$'}) for item in trial_data if 'Binary water acc' in item['Metric']]
 df_acc = pd.DataFrame(trial_data)
 df_acc = df_acc.dropna(axis=0)
-df_acc = df_acc.round(2)
+df_acc = df_acc.round(2).astype(str)
 df_acc = df_acc.sort_values(by=['Class', 'Metric']).reset_index(drop=True)
 df_acc['Class'] = df_acc['Class'].map(format_label)
 df_acc = df_acc.set_index(['Class', 'Metric'])

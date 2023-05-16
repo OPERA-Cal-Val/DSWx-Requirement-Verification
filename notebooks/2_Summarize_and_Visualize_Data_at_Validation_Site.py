@@ -304,7 +304,7 @@ stat_data_1 = [{'Class': class_label.replace('_', ' '),
 # More Formatting
 df_acc = pd.DataFrame(stat_data_0 + stat_data_1)
 df_acc = df_acc.dropna(axis=0)
-df_acc = df_acc.round(2)
+df_acc = df_acc.round(2).astype(str)
 df_acc = df_acc.sort_values(by=['Class', 'Metric']).reset_index(drop=True)
 df_acc = df_acc.set_index(['Class', 'Metric'])
 df_acc
