@@ -54,6 +54,19 @@ __pycache__/
 
 # Latex
 *.tex
+*.aux
+*.synctex*
+*.out
+*.toc
+*.pdf
+*.nav
+*.log
+*.snm
+*.vrb
+*.fdb_latexmk
+*.fls
+!dswx_verification/templates/main_template.tex
+!dswx_verification/templates/slides.tex
 
 # Shapefiles
 *.shp

@@ -40,3 +40,4 @@ dependencies:
  - pystac-client
  - python-dotenv
  - dem_stitcher
+ - jinja2

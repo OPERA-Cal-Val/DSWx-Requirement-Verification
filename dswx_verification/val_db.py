@@ -125,5 +125,6 @@ def get_validation_metadata_by_site_name(site_name: str) -> pd.DataFrame:
     df_val_site = df_val[df_val.site_name == site_name].reset_index(drop=True)
     n = df_val_site.shape[0]
     if n != 1:
-        raise ValueError('The site name did not yeild a unique row in the localized metadata')
+        raise ValueError('The site name did not yeild a unique row in the '
+                         'localized metadata')
     return df_val_site

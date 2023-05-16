@@ -1,0 +1,81 @@
+%\documentclass[xcolor=dvipsnames, 8pt]{beamer}
+\documentclass[8pt]{beamer}
+
+\mode<presentation>
+{
+  \usetheme{default}      % or try Darmstadt, Madrid, Warsaw, ...
+  \usecolortheme{beaver} % or try albatross, beaver, crane, ...
+  \usefonttheme{default}  % or try serif, structurebold, ...
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamertemplate{caption}[numbered]
+  \setbeamerfont{frametitle}{size=\tiny}
+}
+
+
+
+
+\usepackage{graphicx}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks,linkcolor=,urlcolor=blue}
+\usepackage{caption, array}
+\usepackage[Export]{adjustbox}
+
+\usepackage{multirow}
+\usepackage{booktabs}
+
+
+
+
+\setbeamerfont{page number in head/foot}{size=\large}
+\setbeamertemplate{footline}[frame number]
+
+
+\newcommand{\VAR}[1]{\texttt{{#1}}}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+\begin{center}
+\textbf{DSWx Presentation}\\
+\vspace{.5cm}
+John Jones (USGS), Al Handwerger (JPL), Charlie Marshak (JPL), and OPERA PST \\
+
+\today\\
+%\vspace{.2in}
+\end{center}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+\frametitle{Validation Summary}
+\tiny
+\begin{itemize}
+\item \VAR{numOfValidationSites} validation sites across 4 strata defined in \href{https://www.sciencedirect.com/science/article/pii/S0034425720301620}{Pickens et al.} - chips are reclassified into appropriate strata based on current water extents.
+\begin{itemize}
+\tiny
+\item Strata 0: Dry (0$\%$ water): 10 sites
+\item Strata 1: low water ($>0$ and $\leq.08\%$): 10 sites
+\item Strata 2: moderate  water ($>0.08\%$ and $\leq 2\%$): 13 sites
+\item Strata 3: high water ($>2\%$): 19 sites
+\end{itemize}
+\end{itemize}
+
+\begin{center}
+
+\VAR{pathToPassexTex}
+
+\vspace{.25cm}
+
+\VAR{pathToMeanStatsTex}
+
+\end{center}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\VAR{pathToSlides}
+
+\end{document}

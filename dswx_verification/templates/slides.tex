@@ -1,0 +1,44 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[fragile]
+\frametitle{$\VAR{siteName}$}
+
+\begin{center}
+\tiny
+\begin{verbatim}
+Site Name: \VAR{siteName}
+\end{verbatim}
+\input{\VAR{presentationSiteDir}/more_ids.tex}
+\adjincludegraphics[width=\textwidth,trim={{.02\width} {0.2\height} {.12\width} {0.2\height}},clip]{\VAR{presentationSiteDir}/extent.png}
+
+\end{center}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[t,fragile]
+\frametitle{$\VAR{siteName}$}
+
+\begin{center}
+
+\TINY
+\adjincludegraphics[width=.8\textwidth,trim={{.0\width} {.0\height} {.0\width} {.0\height}},clip]{\VAR{presentationSiteDir}/comparison_resample_without_mask.png}
+\input{\VAR{presentationSiteDir}/requirements.tex}
+\input{\VAR{presentationSiteDir}/confusion.tex}
+\input{\VAR{presentationSiteDir}/accuracy.tex}
+\end{center}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[t,fragile]
+\frametitle{$\VAR{siteName}$}
+\begin{center}
+\TINY
+\adjincludegraphics[width=.8\textwidth,trim={{.0\width} {.0\height} {.0\width} {.0\height}},clip]{\VAR{presentationSiteDir}/comparison_resample_with_mask.png}
+\input{\VAR{presentationSiteDir}/areas.tex}
+\input{\VAR{presentationSiteDir}/omission_comission.tex}
+
+\end{center}
+\end{frame}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
