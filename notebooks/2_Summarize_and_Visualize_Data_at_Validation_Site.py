@@ -153,14 +153,16 @@ ax[2].yaxis.get_offset_text().set_fontsize(fontSize)
 ax[2].xaxis.get_offset_text().set_fontsize(fontSize)
 
 im = dswx_im_data.get_images()[0]
-bounds =  [0, 1, 2, 3, 251, 252, 253, 254]
+bounds =  [0, 1, 2, 3, 
+           251, 252, 253, #254
+          ]
 cbar=fig.colorbar(im, 
                   ax=ax, 
                   shrink=0.5, 
                   pad=0.05, 
                   boundaries=bounds, 
                   cmap=cmap, 
-                  ticks=[0.5, 1.5, 2.5, 251.5, 252.5, 253.5])
+                  ticks=[0.5, 1.5, 2.5, 251.5, 252.5]) #, 253.5])
 
 cbar.ax.tick_params(labelsize=8)
 norm = colors.BoundaryNorm(bounds, cmap.N)
@@ -168,7 +170,8 @@ cbar.set_ticklabels(['Not Water',
                      'Open Water',
                      'Partial Surface Water',
                      'Snow/Ice','Cloud/Cloud Shadow', 
-                     'Ocean Mask'],
+                     #'Ocean Mask'
+                    ],
                     fontsize=fontSize)   
 
 
@@ -222,10 +225,23 @@ for plot_type in ['without_mask', 'with_mask']:
 
 
     cbar.ax.tick_params(labelsize=8)
-    bounds =  [0, 1, 2, 3, 251, 252, 253, 254]
+    bounds =  [0, 1, 2, 3, 
+               251, 252, 253, # 254
+              ]
     norm = colors.BoundaryNorm(bounds, cmap.N)
-    cbar=fig.colorbar(im_dswx, ax=ax, shrink=0.5, pad=0.05, boundaries=bounds, cmap=cmap, ticks=[0.5, 1.5, 2.5, 251.5, 252.5, 253.5])
-    cbar.set_ticklabels(['Not Water', 'Open Water','Partial Surface Water','Snow/Ice','Cloud/Cloud Shadow', 'Ocean Mask'],fontsize=fontSize)   
+    cbar=fig.colorbar(im_dswx, 
+                      ax=ax, shrink=0.5, pad=0.05, boundaries=bounds, cmap=cmap, 
+                      ticks=[0.5, 1.5, 2.5, 
+                             251.5, 252.5, # 253.5
+                            ])
+    cbar.set_ticklabels(['Not Water', 
+                         'Open Water',
+                         'Partial Surface Water',
+                         'Snow/Ice',
+                         'Cloud/Cloud Shadow', 
+                         #'Ocean Mask'
+                        ]
+                        ,fontsize=fontSize)   
 
     cbar.ax.tick_params(labelsize=8)
 
@@ -233,20 +249,21 @@ for plot_type in ['without_mask', 'with_mask']:
 
     # source: https://stackoverflow.com/questions/39500265/manually-add-legend-items-python-matplotlib
 
-    from matplotlib.lines import Line2D
-    from matplotlib import colors, colorbar, cm
-    cNorm  = colors.Normalize(vmin=0, vmax=1)
-    scalarMap = cm.ScalarMappable(norm=cNorm, cmap='viridis')
-    legend_elements = [Line2D([0], 
-                              [0], 
-                              marker='s',
-                              color='w',
-                              label='No data/Masked',
-                              markerfacecolor=scalarMap.to_rgba(1),
-                              markeredgecolor='black',
-                              alpha=1,
-                              markersize=10)]
-    ax[0].legend(handles=legend_elements, loc='upper left', fontsize=6,  framealpha=1, edgecolor='white')
+    if plot_type == 'with_mask':
+        from matplotlib.lines import Line2D
+        from matplotlib import colors, colorbar, cm
+        cNorm  = colors.Normalize(vmin=0, vmax=1)
+        scalarMap = cm.ScalarMappable(norm=cNorm, cmap='viridis')
+        legend_elements = [Line2D([0], 
+                                  [0], 
+                                  marker='s',
+                                  color='w',
+                                  label='No data/Masked',
+                                  markerfacecolor=scalarMap.to_rgba(1),
+                                  markeredgecolor='black',
+                                  alpha=1,
+                                  markersize=10)]
+        ax[0].legend(handles=legend_elements, loc='upper left', fontsize=6,  framealpha=1, edgecolor='white')
 
 
     plt.savefig(presentation_dir / f'comparison_resample_{plot_type}.png')

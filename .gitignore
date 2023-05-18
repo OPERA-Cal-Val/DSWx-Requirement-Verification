@@ -79,3 +79,6 @@ __pycache__/
 
 # Notebooks
 *.ipynb
+
+# IGARSS
+notebooks/igarss.py
