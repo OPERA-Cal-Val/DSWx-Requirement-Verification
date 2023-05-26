@@ -5,14 +5,15 @@ from dotenv import dotenv_values
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Q, Search
 
-config = dotenv_values()
-ES_USERNAME = config['ES_USERNAME']
-ES_PASSWORD = config['ES_PASSWORD']
+
 urllib3.disable_warnings()
 
 
 @lru_cache
 def get_search_client():
+    config = dotenv_values()
+    ES_USERNAME = config['ES_USERNAME']
+    ES_PASSWORD = config['ES_PASSWORD']
     GRQ_URL = 'https://100.104.62.10/grq_es/'
     grq_client = Elasticsearch(GRQ_URL,
                                http_auth=(ES_USERNAME, ES_PASSWORD),
