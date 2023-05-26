@@ -20,7 +20,6 @@ This repository is the descendent of:
 3. `conda activate dswx_val`
 4. `python -m ipykernell install --user --name --dswx_val`
 5. `pip install .` or for development `pip install -e .`
-6. `python -m ipykernel install --user --name dswx_val`
 
 Explore the notebooks using jupyter lab. It's *imperative* to run jupyter through the correct environment so that jupytext will be able to load the percent files as notebooks.
 
