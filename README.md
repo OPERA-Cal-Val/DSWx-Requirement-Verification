@@ -45,7 +45,7 @@ As above, we need the correct environment (i.e. `dwx_val` dictated by the `envir
 Navigate to the `notebooks` directory in this repository.
 
 1. `jupytext --set-formats ipynb,py:percent *.py` (generates the corresponding notebook from the percent formatted file)
-2. Run `python ../verify_dswx.py --yaml_file verification_parameters.yml`
+2. Run `python ../verify_dswx.py --yaml_config verification_parameters.yml`
 
 Adjust the parameters within the yaml file as required. This will create `*.tex` files that can be compiled into a slide deck.
 
