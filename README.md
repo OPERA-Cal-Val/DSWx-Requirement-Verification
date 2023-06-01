@@ -21,7 +21,7 @@ This repository is the descendent of:
 4. `python -m ipykernell install --user --name --dswx_val`
 5. `pip install .` or for development `pip install -e .`
 
-Explore the notebooks using jupyter lab. It's *imperative* to run jupyter through the correct environment so that jupytext will be able to load the percent files as notebooks.
+Explore the notebooks using jupyter lab. It's *important* to run jupyter through the correct environment so that jupytext will be able to load the percent files as notebooks.
 
 ## Latex
 
@@ -31,6 +31,8 @@ For generating the pdf slides, a working version `latex` is required (specifical
 # Usage
 
 We use `jupytext` to better version control the highly interactive notebooks. There are two routes for exploration. In both cases, we use a `yml` file to share parameters across the different notebooks. A sample can be found [here](notebooks/verification_parameters.yml).
+
+*Note*: If you accidentally modify the notebooks in a jupyter in an environment that does not have `jupytext` (and the *.py files have conflicts with *.ipynb files), it is recommended to remove the associated `*.py` file and then reopen the `*.ipynb` file using the correct evironment with `jupytext` to create a new `*.py` file upon save. This will ensure your latest modifications in the notebook are updated and tracked in this environment.
 
 ## Individual Notebooks over a given Validation Site
 
