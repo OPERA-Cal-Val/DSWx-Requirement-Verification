@@ -61,7 +61,8 @@ print(slides_tmpl_tex)
 # %%
 def generate_one_slide(site_presentation_dir: Path) -> str:
     out_tex = render_latex_template(slides_tmpl_tex,
-                                    variables=dict(siteName=site_presentation_dir.name, 
+                                    # The site name has `_` and latex in normal text mode expects a `\_`
+                                    variables=dict(siteName=site_presentation_dir.name.replace('_', '\_'), 
                                                    presentationSiteDir=str(site_presentation_dir)))
     return out_tex
 
