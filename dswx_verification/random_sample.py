@@ -36,7 +36,9 @@ def get_equal_samples_per_label(flat_array_of_labels: np.ndarray,
 def generate_random_indices_for_classes(flat_array_of_labels: np.ndarray,
                                         labels: list = None,
                                         total_target_sample_size: int = 1_000,
-                                        n_trials: int = 100) -> np.ndarray:
+                                        n_trials: int = 100,
+                                        seed: int = 0) -> np.ndarray:
+    np.random.seed(seed)
     labels = labels or [0, 1, 2]
     samples_per_label = get_equal_samples_per_label(flat_array_of_labels,
                                                     labels,
