@@ -549,7 +549,9 @@ stratum_string
 # %%
 latex_0 = "\\begin{verbatim}\n" + "Planet ID: " + planet_id + "\n\\end{verbatim}\n"
 latex_1 = "\\begin{verbatim}\n" + "Site Name: " + site_name + "\n\\end{verbatim}\n"
-latex = latex_0 + latex_1 + stratum_string
+latex_2 = "\\begin{verbatim}\n" + "DSWx-ID: " + dswx_id + "\n\\end{verbatim}\n"
+
+latex = latex_0 + latex_1 + latex_2 + stratum_string
 print(latex)
 
 # %%
