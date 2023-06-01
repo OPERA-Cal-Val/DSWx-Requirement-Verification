@@ -47,6 +47,7 @@ from tqdm import tqdm
 from pandas import json_normalize
 import pandas as pd
 from pathlib import Path
+from shapely.geometry import box
 import json
 
 # %% [markdown]
@@ -100,7 +101,19 @@ site_dir.mkdir(exist_ok=True, parents=True)
 # %% [markdown]
 # # Load Data
 #
-# We load the DSWx products and the corresponding validation dataset.
+# We load the validation dataset and corresponding DSWx product.
+
+# %% [markdown]
+# ## Val Dataset
+
+# %%
+val_url = df_site_meta['validation_dataset_url'][0]
+with rasterio.open(val_url) as ds:
+    X_val = ds.read(1)
+    p_val = ds.profile
+    val_bounds = list(ds.bounds)
+
+# %% [markdown]
 #
 # ## DSWx
 
@@ -111,19 +124,20 @@ with rasterio.open(dswx_url) as ds:
     p_dswx = ds.profile
     dswx_colormap = ds.colormap(1)
 
-# %%
-X_dswx_c, p_dswx_c = read_raster_from_window(dswx_url,
-                                             df_site_meta.total_bounds,
-                                             df_site_meta.crs)
 
 # %% [markdown]
-# ## Validation Dataset
+# We create a dataframe that is $180$ meters (i.e. $60$ pixels $\times$ 3 meters resolution) buffered around validation and then reproject to the DSWx frame to get the bounds in the DSWx frame. This is slightly circuituous than say using the bounds from the `df_site_meta` directly but gives us more transparent control of the buffer with respect to the validation dataset.
 
 # %%
-val_url = df_site_meta['validation_dataset_url'][0]
-with rasterio.open(val_url) as ds:
-    X_val = ds.read(1)
-    p_val = ds.profile
+df_val_bounds = gpd.GeoDataFrame(geometry=[box(*val_bounds).buffer(60)],
+                                 crs=p_val['crs'])
+df_val_bounds = df_val_bounds.to_crs(p_dswx['crs'])
+df_val_bounds
+
+# %%
+X_dswx_c, p_dswx_c = read_raster_from_window(dswx_url,
+                                             df_val_bounds.total_bounds,
+                                             df_val_bounds.crs)
 
 # %% [markdown]
 # ## Sample Plot
@@ -161,18 +175,29 @@ X_val[size_mask_3m] = 255
 # Now, we resample.
 
 # %%
-X_perc_r, p_perc_r = resample_label_into_percentage(X_val, p_val, p_dswx_c, 1)
+plt.imshow(X_val == 255)
+
+# %%
+p_dswx_c_float = p_dswx_c.copy()
+p_dswx_c_float['dtype'] = 'float32'
+X_perc_r, p_perc_r = resample_label_into_percentage(X_val, 
+                                                    p_val, 
+                                                    p_dswx_c_float, 
+                                                    1, 
+                                                    minimum_nodata_percent_for_exclusion=.5)
 
 
 X_val_r, p_val_r = reclassify_validation_dataset_to_dswx_frame(X_val,
                                                                p_val,
-                                                               p_dswx_c)
+                                                               p_dswx_c_float,
+                                                               open_water_label=1,
+                                                               minimum_nodata_percent_for_exclusion=.5)
 
 # %% [markdown]
 # Again, we plot for interactivity. See subsequent notebooks for finalized plots with colorbars and axes.
 
 # %%
-fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+fig, ax = plt.subplots(1, 3, figsize=(15, 5), dpi=250)
 
 plot.show(X_val, transform=p_val['transform'], ax=ax[0], cmap=cmap, vmin=0, vmax=255, interpolation='none')
 ax[0].set_title('Original Validation Dataset with 3 ha Size Mask')
@@ -192,10 +217,15 @@ ax[2].axis('off')
 # ## Size Mask
 #
 # We are going to perform an additional size mask once the data is reprojected in case their are isolated water bodies that are less than 1 hectare in the DSWx frame.
+#
+# **Note**: In this case, we exclude [1, 2] *both* as together these define inundation areas.
 
 # %%
 pixels_in_3ha_at_30m = int(3 * get_number_of_pixels_in_hectare(p_val_r['transform'].a))
-size_mask_30m = get_contiguous_areas_of_class_with_maximum_size(X_val_r, 1, pixels_in_3ha_at_30m)
+size_mask_30m = get_contiguous_areas_of_class_with_maximum_size(X_val_r, [1, 2], pixels_in_3ha_at_30m)
+
+# %%
+plt.imshow(size_mask_30m, interpolation='none', vmax=1, vmin=0)
 
 # %% [markdown]
 # ## DSWx Verification Mask
@@ -371,5 +401,5 @@ paths
 # %%
 json_data = df_trials_agg.to_dict('records')[0]
 
-# %%
+# %% editable=true slideshow={"slide_type": ""}
 json.dump(json_data, open(site_dir / 'trial_stats.json', 'w'), indent=2)
