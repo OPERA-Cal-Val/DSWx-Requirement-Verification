@@ -82,3 +82,6 @@ __pycache__/
 
 # IGARSS
 notebooks/igarss.py
+
+## Ignore results.csv
+**/results.csv
