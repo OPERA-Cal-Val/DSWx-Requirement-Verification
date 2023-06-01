@@ -22,9 +22,7 @@
 #
 # This notebook is the core of the validation. It reads validation data and the provisional products, compares the two via random sampling of the classes, and then serializes this information. Although there are plots in this notebook, the visualization, aggregation, and formatting is done in subsequent notebooks.
 
-# %%
-
-# %%
+# %% editable=true slideshow={"slide_type": ""}
 from dswx_verification import (get_validation_metadata_by_site_name, 
                                reclassify_validation_dataset_to_dswx_frame, 
                                resample_label_into_percentage,
