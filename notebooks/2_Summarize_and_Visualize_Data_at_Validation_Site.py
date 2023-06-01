@@ -275,10 +275,19 @@ for plot_type in ['without_mask', 'with_mask']:
 df_samples = gpd.read_file(site_dir / f'samples__{site_name}')
 
 # %%
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(dpi=300)
 
 plot.show(X_val_r, transform=p_val_r['transform'], ax=ax, cmap=cmap, vmin=0, vmax=255, interpolation='none')
-df_samples.plot(ax=ax, color='green')
+df_samples.plot(ax=ax, color='green', alpha=.85)
+
+ax.set_xlabel('UTM easting (meters)',fontsize=fontSize)
+ax.set_ylabel('UTM northing (meters)',fontsize=fontSize)
+
+ax.ticklabel_format(axis='both', style='scientific',scilimits=(0,0),useOffset=False,useMathText=True)
+ax.tick_params(axis='both', which='major', labelsize=fontSize)
+ax.yaxis.get_offset_text().set_fontsize(fontSize)
+ax.xaxis.get_offset_text().set_fontsize(fontSize)
+    
 plt.savefig(presentation_dir / f'sampling_of_trial_over_validation_site.png')
 
 # %% [markdown]

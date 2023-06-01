@@ -132,7 +132,7 @@ n_pws_passes, n_osw_passes, n_both_pass
 # %%
 n_osw_fails = (~df_proc.osw_requirement).sum()
 n_pws_fails = (~df_proc.psw_requirement).sum()
-n_both_fail = (~df_proc.osw_requirement & ~df_proc.psw_requirement).sum()
+n_both_fail = (~df_proc.osw_requirement | ~df_proc.psw_requirement).sum()
 n_osw_fails, n_pws_fails, n_both_fail
 
 # %%
