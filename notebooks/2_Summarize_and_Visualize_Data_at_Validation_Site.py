@@ -396,10 +396,10 @@ bw_std = metric_data['binary_water_acc.All.std']
 
 df_requirement = pd.DataFrame([{'Class': 'PSW',
                                 'OPERA Req.': psw_req,
-                                'Accuracy ($\%$)': f'{psw_mu * 100:1.2f} ({psw_mu * 100:1.2f})'},
+                                'Accuracy ($\%$)': f'{psw_mu * 100:1.2f} ({psw_std * 100:1.2f})'},
                                {'Class': 'OSW',
                                 'OPERA Req.': osw_req,
-                                'Accuracy ($\%$)': f'{osw_mu * 100:1.2f} ({osw_mu * 100:1.2f})'},
+                                'Accuracy ($\%$)': f'{osw_mu * 100:1.2f} ({osw_std * 100:1.2f})'},
                                {'Class': 'Binary Water',
                                 'OPERA Req.': 'N/A',
                                 'Accuracy ($\%$)': f'{bw_mu * 100:1.2f} ({bw_std * 100:1.2f})'}
@@ -505,7 +505,13 @@ def format_label(label):
 def format_metric(met):
     return 'om' if met == 'precision' else 'co' 
 
-om_com_data = {f'{stat[0]}_{format_metric(met)}_{format_label(class_label)}': 100 - data.get(f'{met}.{class_label}.{stat}', np.nan) * 100
+def get_metric(data: dict, met: str, class_label: str, stat: str):
+    if stat == 'mean':
+        return 100 - data.get(f'{met}.{class_label}.{stat}', np.nan) * 100
+    else:
+        return data.get(f'{met}.{class_label}.{stat}', np.nan) * 100
+
+om_com_data = {f'{stat[0]}_{format_metric(met)}_{format_label(class_label)}': get_metric(data, met, class_label, stat)
               for class_label in ['Not_Water', 'Open_Surface_Water', 'Partial_Surface_Water']
               for stat in ['mean', 'std']
               for met in ['precision', 'recall']}
