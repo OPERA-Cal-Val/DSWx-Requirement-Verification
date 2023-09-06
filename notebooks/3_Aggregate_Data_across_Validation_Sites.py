@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.15.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -16,10 +16,13 @@
 # %% editable=true slideshow={"slide_type": ""}
 from dswx_verification.data_models import VerificationParameters
 from pathlib import Path
+from dswx_verification.val_db import get_classified_planet_table, get_s3_url_of_classified_image
 import json
 import pandas as pd
 import numpy as np
 import yaml
+from tqdm import tqdm
+import rasterio
 
 # %% [markdown]
 # # Parameters
@@ -171,3 +174,43 @@ df_passes
 latex = df_passes.style.to_latex(multirow_align='t', hrules=True)
 with open(presentation_dir / 'total_passes.tex', 'w') as f:
     f.write(latex)
+
+# %% [markdown]
+# # Read Strata and double check it
+
+# %%
+df_meta_planet = get_classified_planet_table()
+df_meta_planet.head()
+
+# %%
+stratum = df_meta_planet.water_stratum
+
+# %%
+import numpy as np
+
+def stratify(water_frac):
+    bins = [0, .0008, .02, 1]
+    return np.digitize(water_frac, bins, right=True)
+
+def compute_strata(planet_id: str) -> int:
+    url = get_s3_url_of_classified_image(planet_id)
+    with rasterio.open(url) as ds:
+        water_mask = ds.read(1)
+        nodata = ds.nodata
+        classified_profile = ds.profile
+        bounds = ds.bounds
+    
+    data_mask = (water_mask != nodata)
+    water_frac = (water_mask == 1).sum() / data_mask.sum()
+    water_stratum = stratify(water_frac)
+    return water_stratum
+
+
+# %%
+strata_recomputed = list(map(compute_strata, tqdm(df_meta_planet.image_name.tolist())))
+
+# %%
+df_meta_planet['strata_r'] = strata_recomputed
+
+# %%
+sum(~(df_meta_planet['strata_r'] == df_meta_planet['water_stratum']))

@@ -13,17 +13,20 @@ os.environ["AWS_NO_SIGN_REQUEST"] = "YES"
 
 @lru_cache
 def get_classified_planet_table() -> gpd.GeoDataFrame:
-    """The extents and metadata of the inpendently generated/classified water maps derived from planet data
+    """The extents and metadata of the inpendently generated/classified water
+    maps derived from planet data
 
     Returns
     -------
     gpd.GeoDataFrame
-        Table with s3 locations and geometries of classified images (subsets of planet frames)
+        Table with s3 locations and geometries of classified images (subsets of
+        planet frames)
     """
     df_image_calc = gpd.read_file('s3://opera-calval-database-dswx/image_calc.geojson')
 
     #  Group by upload date and image name and get the most recent
-    df_image_calc = df_image_calc.sort_values(by=['image_name', 'upload_date'], ascending=True)
+    df_image_calc = df_image_calc.sort_values(by=['image_name', 'upload_date'],
+                                              ascending=True)
     df_image_calc = df_image_calc.groupby('image_name').tail(1)
 
     # Check if "final" is in processing level
