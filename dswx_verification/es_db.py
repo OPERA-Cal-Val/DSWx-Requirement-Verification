@@ -23,7 +23,7 @@ def get_search_client():
                                )
     search = Search(using=grq_client,
                     # wildcard is where the version is
-                    index='grq_*_l3_dswx_hls')
+                    index='grq_*_hls-2023.09')
 
     if not grq_client.ping():
         raise ValueError('Either JPL username/password is wrong or not connected to VPN')

@@ -22,14 +22,11 @@ dependencies:
  - pip
  - notebook
  - jupyterlab
- - jupyter_contrib_nbextensions
  - planet
  - pytest
  - contextily
  - scikit-image
  - scikit-learn
- - elasticsearch
- - elasticsearch-dsl
  - pyyaml
  - pydantic
  - click
@@ -41,3 +38,7 @@ dependencies:
  - python-dotenv
  - dem_stitcher
  - jinja2
+ # PyPI has newer versions compatible with HySDS
+ - pip:
+   - elasticsearch
+   - elasticsearch-dsl
