@@ -110,6 +110,7 @@ def generate_linked_id_table_for_classified_imagery() -> gpd.GeoDataFrame:
     columns = ['site_name', 'planet_id', 'dswx_id', 'hls_id', 'dswx_urls',
                'validation_dataset_url', 'water_stratum', 'geometry']
     df_id = df_id[columns]
+    df_id.sort_values(by='site_name', ascending=False, inplace=True)
     return df_id
 
 
@@ -118,7 +119,7 @@ def get_path_of_validation_geojson():
     return data_dir / 'validation_table.geojson'
 
 
-def get_localized_validation_table():
+def get_localized_validation_table() -> gpd.GeoDataFrame:
     local_geojson_path = get_path_of_validation_geojson()
     return gpd.read_file(local_geojson_path)
 
