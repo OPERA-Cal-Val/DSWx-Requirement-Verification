@@ -27,33 +27,51 @@
 # **Note**: this notebook requires JPL VPN access and a `.env` file created as described in the readme of this repository! Although all the datasets are located in public buckets, the database that makes the searching of these datasets possible is not.
 
 # %%
-from dswx_verification import generate_linked_id_table_for_classified_imagery, get_path_of_validation_geojson
-from dswx_verification.val_db import get_localized_validation_table
-
-# %% [markdown]
-# # Generate a new Validation Table
-
-# %%
-df = generate_linked_id_table_for_classified_imagery()
-df.head()
-
-# %% [markdown]
-# # Localize Data
-
-# %%
+import datetime
 import rasterio
 from pathlib import Path
+import json
 from tqdm import tqdm
 from itertools import starmap
 import geopandas as gpd
 import concurrent.futures
 import shutil
 
+import dswx_verification
+from dswx_verification import generate_linked_id_table_for_classified_imagery, get_path_of_validation_geojson
+from dswx_verification.val_db import get_localized_validation_table, get_classified_planet_table
+
+# %% [markdown]
+# # Generate a new Validation Table
+
+# %%
+REGENERATE_TABLE_WITH_ES = False
+
+# %%
+if not REGENERATE_TABLE_WITH_ES:
+    df = get_localized_validation_table()
+else:
+    df = generate_linked_id_table_for_classified_imagery()
+df.head()
+
+# %% [markdown]
+# # Localize Data
+
 # %%
 LOCALIZE_DATA = True
 
 # %%
-local_db_dir = Path('opera_dswx_val_db')
+t = datetime.date.today()
+t
+
+# %%
+local_db_dir = Path(f'opera_dswx_val_db-{t.year}{t.month:02d}{t.day:02d}')
+local_db_dir.mkdir(exist_ok=True, parents=True)
+local_db_dir
+
+# %%
+df_planet = get_classified_planet_table()
+df_planet.head()
 
 
 # %%
@@ -113,7 +131,8 @@ def localize_val_data(df: gpd.GeoDataFrame,
     out_dirs = [local_db_dir / site_name for site_name in site_names]
     if localize_data:
         [out_dir.mkdir(exist_ok=True, parents=True) for out_dir in out_dirs]
-    out_file_names = [f'classified_planet_{id_}.tif' for id_ in planet_ids]
+    out_file_names = [f'site_name-{sn}-classified_planet-{pid}.tif' for sn, pid in zip(site_names, 
+                                                                                       planet_ids)]
     
     val_paths = list(starmap(download_one, 
                              zip(tqdm(val_urls, desc='Val All'), 
@@ -129,6 +148,33 @@ dswx_paths = localize_dswx_data(df)
 # %%
 val_paths = localize_val_data(df)
 
+
+# %% [markdown]
+# ## Serialize Metadata from Planet Classification
+#
+# This includes all the notes from the manual/semi-automated classification.
+
+# %%
+def get_classification_metadata_and_notes(planet_id: str):
+    metadata = df_planet[df_planet.image_name == planet_id].to_dict('records')[0]
+    return metadata
+
+def serialize_metadata_for_classified_dataset(data: dict):
+    site_name = data['site_name']
+    planet_id = data['planet_id']
+    out_dir = local_db_dir / site_name
+    out_path = out_dir / f'Site-{site_name}-metadata.json'
+    metadata = get_classification_metadata_and_notes(planet_id)
+    # Shapely geometries need to be converted to strings
+    metadata['geometry'] = metadata['geometry'].wkt
+    json.dump(metadata, open(out_path, 'w'), indent=2)
+    return out_path
+
+
+# %%
+records = df.to_dict('records')
+metadata_paths = list(map(serialize_metadata_for_classified_dataset, records))
+
 # %% [markdown]
 # ## Update Table
 
@@ -138,16 +184,31 @@ dswx_paths_str_list = [list(map(str, paths)) for paths in dswx_paths]
 df['rel_local_dswx_paths'] = list(map(lambda ps: ' '.join(ps), dswx_paths_str_list))
 df.head()
 
+# %% [markdown]
+# Save the metadata table inside the local database too.
+
+# %%
+df.to_file(local_db_dir / 'validation_table.geojson', driver='GeoJSON')
+
+# %% [markdown]
+# We are going to save the `dswx_version` for provenance of the generated data.
+
+# %%
+with open(local_db_dir / 'software_version.txt', 'w') as f:
+    version=dswx_verification.__version__
+    f.write(f'dswx_verification version: {version}')
+
 # %%
 if LOCALIZE_DATA:
     shutil.make_archive(local_db_dir, 'zip', local_db_dir)
 
 # %% [markdown]
 # # Serialize the Validation Table in package data
+#
+# This allows us to use the table in the actual package.
 
 # %%
 geojson_path = get_path_of_validation_geojson()
-geojson_path
 
 # %%
 df.to_file(geojson_path, driver='GeoJSON')
