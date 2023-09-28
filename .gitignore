@@ -48,6 +48,7 @@ __pycache__/
 *.vrt
 *.json
 *.geojson
+*.txt
 
 # plots
 *.png
