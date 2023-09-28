@@ -1,0 +1,41 @@
+[build-system]
+requires = ['setuptools>=60', 'setuptools-scm>=8.0']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'dswx_verification'
+requires-python = '>=3.10'
+authors = [{name='Alexander Handwerger, Charlie Marshak, and OPERA Project Science Team'}]
+description = 'Verify DSWx Requirements'
+license = {text = 'Apache 2.0'}
+classifiers=[
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: Apache 2.0',
+    'Natural Language :: English',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+]
+
+dynamic = ['version', 'readme']
+
+[project.urls]
+Homepage = 'https://github.com/ACCESS-Cloud-Based-InSAR/azimuth-timing-example'
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+include = ['dswx_verification']
+exclude = ['notebooks*', 'tests*']
+
+[tool.setuptools.dynamic]
+readme = {file = ['README.md'], content-type = 'text/markdown'}
+
+
+[tool.setuptools_scm]
+
+[tool.ruff]
+line-length = 120
