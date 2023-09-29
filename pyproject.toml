@@ -21,7 +21,7 @@ classifiers=[
 dynamic = ['version', 'readme']
 
 [project.urls]
-Homepage = 'https://github.com/ACCESS-Cloud-Based-InSAR/azimuth-timing-example'
+Homepage = 'https://github.com/OPERA-Cal-Val/DSWx-Requirement-Verification'
 
 [tool.setuptools]
 include-package-data = true
