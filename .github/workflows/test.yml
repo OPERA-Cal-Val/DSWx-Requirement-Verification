@@ -1,0 +1,46 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: extractions/netrc@v1
+        with:
+          machine: urs.earthdata.nasa.gov
+          username: ${{ secrets.EARTHDATA_USERNAME }}
+          password: ${{ secrets.EARTHDATA_PASSWORD }}
+
+      - uses: mamba-org/provision-with-micromamba@main
+        with:
+          environment-name: dswx_val
+          environment-file: environment.yml
+          extra-specs: |
+            python=${{ matrix.python-version }}
+
+      - name: Install kernel
+        shell: bash -l {0}
+        run: |
+          python -m ipykernel install --user --name dswx_val
+      
+      - name: Install kernel
+        shell: bash -l {0}
+        run: |
+          jupytext --set-formats ipynb,py:percent notebooks/*.py
+
+      - name: Pytest in conda environment
+        shell: bash -l {0}
+        run: pytest .
