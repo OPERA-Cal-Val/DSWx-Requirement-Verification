@@ -30,6 +30,6 @@ class VerificationParameters(BaseModel):
                 raise ValueError('The specified location of the local DSWx DB does not exist; '
                                  'if running this via papermill, make sure your relative path is with respect to '
                                  'the runtime directory.')
-        # Update the absolute path of the parent
-        self.dswx_db_dir_parent = self.rel_dswx_db_dir_path.parent.resolve()
+            # Update the absolute path of the parent
+            self.dswx_db_dir_parent = self.rel_dswx_db_dir_path.parent.resolve()
         return self
