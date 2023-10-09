@@ -1,0 +1,9 @@
+verification_parameters:
+  pixels_sampled_per_trial: 1000
+  pixels_distributed_with_respect_to_val: True
+  number_of_trials: 100
+  data_dir: out/dswx_hls
+  confidence_classes_to_strictly_include:
+  rel_dswx_db_dir_path: notebooks/opera_dswx_val_db-20231009
+presentation_parameters:
+  presentation_dir: presentation_material

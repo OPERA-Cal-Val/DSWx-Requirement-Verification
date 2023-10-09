@@ -7,9 +7,10 @@ from tqdm import tqdm
 
 
 repo_dir = Path(__file__).parent.resolve()
-SITE_NOTEBOOKS_RELATIVE_PATHS = [ repo_dir / 'notebooks/1_Verification_Metrics_at_Validation_Site.ipynb',
-                                  repo_dir / 'notebooks/2_Summarize_and_Visualize_Data_at_Validation_Site.ipynb',
+SITE_NOTEBOOKS_RELATIVE_PATHS = [repo_dir / 'notebooks/1_Verification_Metrics_at_Validation_Site.ipynb',
+                                 repo_dir / 'notebooks/2_Summarize_and_Visualize_Data_at_Validation_Site.ipynb',
                                  ]
+
 
 @click.option('--yaml_config',
               required=True,
@@ -20,14 +21,29 @@ SITE_NOTEBOOKS_RELATIVE_PATHS = [ repo_dir / 'notebooks/1_Verification_Metrics_a
               type=str,
               required=False,
               help='Where output notebooks will be saved')
+@click.option('--sites',
+              default=None,
+              type=str,
+              multiple=True,
+              required=False,
+              help=('Site name to pass as parameter e.g. 3_10 to verification; used mainly for testing CLI; '
+                    'Will still aggregate all data that has been serialized')
+              )
 @click.command()
-def main(yaml_config, output_notebooks_dir: str):
+def main(yaml_config: str,
+         output_notebooks_dir: str = None,
+         sites: list = None):
     p = output_notebooks_dir or 'out_notebooks'
     ipynb_dir = Path(p)
     ipynb_dir.mkdir(exist_ok=True, parents=True)
 
     df_val = get_localized_validation_table()
     site_names = df_val.site_name.tolist()
+    if sites:
+        valid_sites = [site in site_names for site in sites]
+        if not all(valid_sites):
+            raise ValueError('Site Names must be in the existing validation table e.g. 3_10')
+        site_names = sites
 
     for in_nb in SITE_NOTEBOOKS_RELATIVE_PATHS:
         print(f'Using the {in_nb.name} template')
