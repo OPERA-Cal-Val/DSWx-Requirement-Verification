@@ -37,7 +37,7 @@ jobs:
         run: |
           python -m ipykernel install --user --name dswx_val
       
-      - name: Install kernel
+      - name: Create Notebooks from Python Percent formatted Files
         shell: bash -l {0}
         run: |
           jupytext --set-formats ipynb,py:percent notebooks/*.py
