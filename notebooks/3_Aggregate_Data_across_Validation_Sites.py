@@ -205,12 +205,14 @@ def compute_strata(planet_id: str) -> int:
     water_stratum = stratify(water_frac)
     return water_stratum
 
+# %% [markdown]
+# Uncomment to check strata calculations.?
 
 # %%
-strata_recomputed = list(map(compute_strata, tqdm(df_meta_planet.image_name.tolist())))
+# strata_recomputed = list(map(compute_strata, tqdm(df_meta_planet.image_name.tolist())))
 
 # %%
-df_meta_planet['strata_r'] = strata_recomputed
+# df_meta_planet['strata_r'] = strata_recomputed
 
 # %%
-sum(~(df_meta_planet['strata_r'] == df_meta_planet['water_stratum']))
+# sum(~(df_meta_planet['strata_r'] == df_meta_planet['water_stratum']))

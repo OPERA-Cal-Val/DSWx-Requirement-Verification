@@ -105,20 +105,34 @@ site_dir.mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
 # ## Val Dataset
+#
+# Check if the local database path is found in the YML, and if so, use it.
 
 # %%
 val_url = df_site_meta['validation_dataset_url'][0]
+if verif_params.rel_dswx_db_dir_path:
+    val_url = verif_params.dswx_db_dir_parent  / df_site_meta['rel_local_val_path'][0]
+val_url
+
+# %%
 with rasterio.open(val_url) as ds:
     X_val = ds.read(1)
     p_val = ds.profile
     val_bounds = list(ds.bounds)
 
 # %% [markdown]
-#
 # ## DSWx
+#
+# Again, if the local database path is found in the YML, use it.
 
 # %%
 dswx_url = df_site_meta['dswx_urls'][0].split(' ')[0]
+if verif_params.rel_dswx_db_dir_path is not None:
+    dswx_url = verif_params.dswx_db_dir_parent / df_site_meta['rel_local_dswx_paths'][0].split(' ')[0]
+dswx_url
+
+# %%
+
 with rasterio.open(dswx_url) as ds:
     X_dswx = ds.read(1)
     p_dswx = ds.profile

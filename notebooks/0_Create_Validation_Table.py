@@ -38,6 +38,7 @@ import json
 from tqdm import tqdm
 from itertools import starmap
 import geopandas as gpd
+import requests
 import concurrent.futures
 import shutil
 
@@ -87,6 +88,9 @@ df_planet = get_classified_planet_table()
 df_planet.head()
 
 
+# %% [markdown]
+# A few important notes in what follows below. First, we need to download each DSWx file using requests in its entirity so we get all the metadata (tags, colorbar, etc). Second, there are 10 separate files for each DSWx dataset and the DEM is by far the largest. For performance, it's best to fashion a queue for all the files at once (10 x number of datasets) so that we can allow the smaller files to continue to occupy available workers while DEMs are downloaded. The validation datasets are each 1 file and are small. We download these datasets serially.
+
 # %%
 def download_one(url: str,
                  out_dir: Path,
@@ -98,45 +102,36 @@ def download_one(url: str,
     out_path = out_dir / local_file_name
 
     if localize_data:
-        with rasterio.open(url) as ds:
-            X, p = ds.read(), ds.profile
-    
-        with rasterio.open(out_path, 'w', **p) as ds:
-            ds.write(X)
+        resp = requests.get(url, stream=True)
+        with open(out_path, 'wb') as file:
+            for chunk in resp.iter_content(chunk_size=1024):  
+                file.write(chunk)
     return out_path
 
-def download_many_datasets(urls: list[str],
-                           out_dir: Path,
-                           max_workers: int = 10) -> list[Path]:
-    def download_one_p(url):
-        return download_one(url, out_dir)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        out_paths = list(executor.map(download_one_p, urls))
-    return out_paths
-
-
-def download_one_dswx_dataset(urls_str: str,
-                              out_dir: Path) -> list[list[Path]]:
-    urls = urls_str.split(' ')
-    return download_many_datasets(urls, out_dir)
-
 def localize_dswx_data(df: gpd.GeoDataFrame,
-                       localize_data=LOCALIZE_DATA) -> list[str]:
-    dswx_urls = df.dswx_urls
-    site_names = df.site_name
-
-    out_dirs = [local_db_dir / site_name / 'dswx' for site_name in site_names]
+                       localize_data=LOCALIZE_DATA,
+                       max_workers=20) -> list[str]:
+    dswx_urls_by_site = df.dswx_urls.tolist()
+    dswx_urls_all = [url for url_group in dswx_urls_by_site for url in url_group.split(' ')]
+    site_names = df.site_name.tolist()
+    out_dirs = [local_db_dir / site_name / 'dswx'  for (site_name, url_group) in zip(site_names, dswx_urls_by_site) 
+                                                   for url in url_group.split(' ')]
     if localize_data:
         [out_dir.mkdir(exist_ok=True, parents=True) for out_dir in out_dirs]
+
+    def download_one_p(data):
+        url, out_dir = data
+        return download_one(url, out_dir) 
     
-    dswx_paths = list(starmap(download_one_dswx_dataset, 
-                              zip(tqdm(dswx_urls, desc='DSWx All'), out_dirs)
-                             )
-                     )
-    return dswx_paths
+    input_data = list(zip(dswx_urls_all, out_dirs))
+    n = len(input_data)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        out_paths = list(tqdm(executor.map(download_one_p, input_data), total=n, desc='dwsx_files'))
+    return out_paths
 
 def localize_val_data(df: gpd.GeoDataFrame,
-                     localize_data=LOCALIZE_DATA) -> list[str]:
+                      max_workers=10,
+                      localize_data=LOCALIZE_DATA) -> list[str]:
     val_urls = df.validation_dataset_url
     site_names = df.site_name
     planet_ids = df.planet_id
@@ -146,20 +141,27 @@ def localize_val_data(df: gpd.GeoDataFrame,
         [out_dir.mkdir(exist_ok=True, parents=True) for out_dir in out_dirs]
     out_file_names = [f'site_name-{sn}-classified_planet-{pid}.tif' for sn, pid in zip(site_names, 
                                                                                        planet_ids)]
-    
-    val_paths = list(starmap(download_one, 
-                             zip(tqdm(val_urls, desc='Val All'), 
-                                 out_dirs,
-                                 out_file_names)
-                             ))
+
+    def download_one_p(data):
+        url, out_dir, out_file_name = data
+        return download_one(url, out_dir, out_file_name=out_file_name) 
+    input_data = list(zip(val_urls, out_dirs, out_file_names))
+    n = len(input_data)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        val_paths = list(tqdm(executor.map(download_one_p, input_data), total=n, desc='dwsx_files'))     
     return val_paths
 
 
 # %%
-dswx_paths = localize_dswx_data(df)
+dswx_paths_all = localize_dswx_data(df)
 
 # %%
 val_paths = localize_val_data(df)
+
+# %%
+N = len(dswx_paths_all) // 10
+dswx_paths_all_str = list(map(str, dswx_paths_all))
+dswx_paths_grouped = [' '.join(dswx_paths_all_str[10 * n: 10 * (n+1)]) for n in range(N)]
 
 
 # %% [markdown]
@@ -193,8 +195,7 @@ metadata_paths = list(map(serialize_metadata_for_classified_dataset, records))
 
 # %%
 df['rel_local_val_path'] = list(map(str, val_paths))
-dswx_paths_str_list = [list(map(str, paths)) for paths in dswx_paths]
-df['rel_local_dswx_paths'] = list(map(lambda ps: ' '.join(ps), dswx_paths_str_list))
+df['rel_local_dswx_paths'] = dswx_paths_grouped
 df.head()
 
 # %% [markdown]
