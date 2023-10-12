@@ -30,17 +30,28 @@ For generating the pdf slides, a working version `latex` is required (specifical
 
 # Usage
 
-We use `jupytext` to better version control the highly interactive notebooks. There are two routes for exploration. In both cases, we use a `yml` file to share parameters across the different notebooks. A sample can be found [here](notebooks/verification_parameters.yml).
+There are two routes:
 
-*Note*: If you accidentally modify the notebooks in a jupyter in an environment that does not have `jupytext` (and the *.py files have conflicts with *.ipynb files), it is recommended to remove the associated `*.py` file and then reopen the `*.ipynb` file using the correct evironment with `jupytext` to create a new `*.py` file upon save. This will ensure your latest modifications in the notebook are updated and tracked in this environment.
+1. Use the notebooks (in order) to explore individual validation sites
+2. Use a python (via papermill) to run all the notebooks
 
-## Individual Notebooks over a given Validation Site
+We use `jupytext` for better version control of the notebooks. In both cases, we use a `yml` file to share parameters across the different notebooks. A sample can be found [here](notebooks/verification_parameters.yml).
 
-Each site can be explored through [notebooks/1_Verification_Metrics_at_Validation_Site.py](notebooks/1_Verification_Metrics_at_Validation_Site.py). The `notebooks/*.py` files should be viewable in a jupyterlab. Make sure to use the correct environment set up above. When saving the notebook, the file will update `*.py` file automatically.
+*Note*: You can use a local version of the database instead of the urls provided in our database [files](https://github.com/OPERA-Cal-Val/DSWx-Requirement-Verification/tree/dev/dswx_verification/data). The tables have `rel_local_val_path` columns and the directory containing the properly formatted database can be specified [here](https://github.com/OPERA-Cal-Val/DSWx-Requirement-Verification/blob/dev/verification_parameters.yml#L7) in the yaml file. If nothing is specified, it will use the s3 urls. Eventually, this database will be published on PO.DAAC and more instructions will be discussed.
 
-## Running the Verification Workflow for all Validation Datasets
+*Note*: If you accidentally modify the notebooks in a jupyter in an environment that does not have `jupytext` (and the *.py files have conflicts with *.ipynb files), it is recommended to remove the associated `*.py` file and then reopen the `*.ipynb` file using the correct evironment with `jupytext` to create a new `*.py` file upon save. This will ensure your latest modifications in the notebook are updated and tracked.
 
-As above, we need the correct environment (i.e. `dwx_val` dictated by the `environment.yml`) as well as a `yml` file to share parameters across the different pieces of the workflow. An example can be found here: [here](notebooks/verification_parameters.yml).
+## 1. Individual Notebooks over a given Validation Site
+
+Each site can be explored through [notebooks/1_Verification_Metrics_at_Validation_Site.py](notebooks/1_Verification_Metrics_at_Validation_Site.py). Specifically, there will be cell where the `site_name` can be specified (these `site_names` can be found [here](https://github.com/OPERA-Cal-Val/DSWx-Requirement-Verification/blob/dev/dswx_verification/data/validation_table.csv)) The `notebooks/*.py` files should be viewable in a jupyterlab as a notebook (this is the precise point of jupytext). Make sure to use the correct environment set up above. When saving the notebook, the file will update `*.py` file automatically.
+
+Note multiple sites can be run and then inspected using the subsequent notebooks.
+
+## 2. Running the Verification Workflow for all Validation Datasets
+
+As above, we need the correct environment (i.e. `dwx_val` dictated by the `environment.yml`) as well as a `yml` file to share parameters across the different pieces of the workflow. An example can be found here: [here](verification_parameters.yml).
+
+**Note**: You can download a copy of the formatte
 
 ### A. Generating the Verification data for all Datasets
 
@@ -51,7 +62,7 @@ Navigate to the `notebooks` directory in this repository.
 
 Adjust the parameters within the yaml file as required. This will create `*.tex` files that can be compiled into a slide deck.
 
-### B. Generating Beamer slides
+### B. Generating Beamer slides (Optional)
 
 Navigate to the presentations directory as indicated in the `yaml` file.  Compile a latex document with `latexmk main.tex --pdf`
 
