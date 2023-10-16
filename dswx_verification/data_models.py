@@ -35,9 +35,15 @@ class VerificationParameters(BaseModel):
             # Update the absolute path of the parent
             self.dswx_db_dir_parent = self.rel_dswx_db_dir_path.parent.resolve()
 
+            df_val = get_localized_validation_table()
+
+            correct_db_name = df_val['rel_local_val_path'][0].split('/')[0]
+            db_name_incorrect = (self.rel_dswx_db_dir_path.stem != correct_db_name)
+            if db_name_incorrect:
+                raise ValueError(f'Local database directory must be called: {correct_db_name}')
+
             # TODO: may want to add warning if not all datasets exists; after PO.DAAC Delivery
             # Check at least one validation dataset path exists
-            df_val = get_localized_validation_table()
             val_paths = df_val['rel_local_val_path']
             val_paths_trunc = ['/'.join(p.split('/')[1:]) for p in val_paths]
             val_paths = [self.rel_dswx_db_dir_path / p_trunc for p_trunc in val_paths_trunc]
