@@ -158,11 +158,6 @@ dswx_paths_all = localize_dswx_data(df)
 # %%
 val_paths = localize_val_data(df)
 
-# %%
-N = len(dswx_paths_all) // 10
-dswx_paths_all_str = list(map(str, dswx_paths_all))
-dswx_paths_grouped = [' '.join(dswx_paths_all_str[10 * n: 10 * (n+1)]) for n in range(N)]
-
 
 # %% [markdown]
 # ## Serialize Metadata from Planet Classification
@@ -188,13 +183,26 @@ def serialize_metadata_for_classified_dataset(data: dict):
 
 # %%
 records = df.to_dict('records')
-metadata_paths = list(map(serialize_metadata_for_classified_dataset, records))
+if LOCALIZE_DATA:
+    metadata_paths = list(map(serialize_metadata_for_classified_dataset, records))
 
 # %% [markdown]
 # ## Update Table
+#
+# We are going to have the relative path to the `local_db_dir`.
 
 # %%
-df['rel_local_val_path'] = list(map(str, val_paths))
+N = len(dswx_paths_all) // 10
+dswx_paths_all_relative = list(map(lambda p: p.relative_to(local_db_dir), dswx_paths_all))
+dswx_paths_all_relative_str = list(map(str, dswx_paths_all_relative))
+dswx_paths_grouped = [' '.join(dswx_paths_all_relative_str[10 * n: 10 * (n+1)]) for n in range(N)]
+dswx_paths_grouped[0]
+
+# %%
+val_paths_relative = list(map(lambda p: p.relative_to(local_db_dir), val_paths))
+
+# %%
+df['rel_local_val_path'] = list(map(str, val_paths_relative))
 df['rel_local_dswx_paths'] = dswx_paths_grouped
 df.head()
 
