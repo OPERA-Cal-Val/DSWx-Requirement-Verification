@@ -1,12 +1,12 @@
 # DSWx-Requirement-Verification
 
-This respository contains the workflow used to verify the DSWx suite. It is currently focused on DSWx-HLS, but will be updated along with the subsequent releases of DSWx products suite.
+This respository contains the workflow used to verify the DSWx suite. It is currently focused on DSWx-HLS, but will be updated along with the subsequent releases of DSWx products.
 
 # Background
 
-An overview of the work performed in this repostory can be found in this IGARSS [proceedings paper](https://ieeexplore.ieee.org/iel7/10281394/10281399/10283397.pdf), in fact all the plots from this paper are generated from the validation report in this repository. The validation plan [here](https://d2pn8kiwq2w21t.cloudfront.net/documents/OPERA_Validation_Plan.pdf) states the project requirements for the OPERA requirements. 
+An overview of the work performed in this repostory can be found in this IGARSS [proceedings paper](https://ieeexplore.ieee.org/iel7/10281394/10281399/10283397.pdf); in fact, all the plots from this paper are generated from the validation report produced by the code in this repository. The validation plan [here](https://d2pn8kiwq2w21t.cloudfront.net/documents/OPERA_Validation_Plan.pdf) provides an overview of the product validation across the entire OPERA project. 
 
-There are three components of the repository:
+As noted above, this repository verifies the OPERA project requirements for the DSWx product suite. There are three components of the repository:
 
 1. The collecton of python routines that are used by the workflow, i.e. the simple statistical functions to sample/compute metrics/etc., the routines that link the various publicly available data including the OPERA provisional products, etc.
 2. The notebooks that apply these routines in order to compare OPERA provisoinal data and validation datasets available.
