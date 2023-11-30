@@ -157,6 +157,7 @@ df_val_bounds
 X_dswx_c, p_dswx_c = read_raster_from_window(dswx_url,
                                              df_val_bounds.total_bounds,
                                              df_val_bounds.crs)
+X_dswx_c = X_dswx_c[0, ...]
 
 # %% [markdown]
 # ## Sample Plot
