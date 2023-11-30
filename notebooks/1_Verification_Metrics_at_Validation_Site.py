@@ -20,6 +20,8 @@
 # %% [markdown]
 # # Introduction
 #
+# **Note**: before running this notebook, it is required to download the data as detailed in the [README.md](../README.md) of this repository. Downloading (and unzipping) the data directly into the local copy of the repository will ensure easiest runtime.
+#
 # This notebook is the core of the validation. It reads validation data and the provisional products, compares the two via random sampling of the classes, and then serializes this information. Although there are plots in this notebook, the visualization, aggregation, and formatting is done in subsequent notebooks.
 
 # %% editable=true slideshow={"slide_type": ""}
