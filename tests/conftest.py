@@ -11,6 +11,7 @@ TEST_DIR = Path(__file__).parent.resolve()
 def verify_all_script_path():
     return TEST_DIR.parent / 'verify_all_dswx.py'
 
+
 @pytest.fixture(scope='function')
 def yaml_config_path():
     """Generates a yml config with absolute path to DB directory; returns path of yml file"""
