@@ -7,6 +7,6 @@ verification_parameters:
   # If no `rel_dswx_db_dir_path` is specified, uses s3 urls. 
   # Else uses specified relative path to directory.
   # Make sure relative path is given relative to current working directory (or notebook)
-  rel_dswx_db_dir_path: ../DB 
+  rel_dswx_db_dir_path: DB 
 presentation_parameters:
   presentation_dir: presentation_material
