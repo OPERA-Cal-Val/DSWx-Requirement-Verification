@@ -88,7 +88,11 @@ notebooks/igarss.py
 **/results.csv
 
 ## Database
-DB/
+./DB/
 
 ## Config yaml for tests
 tests/data/config.yml
+
+## Data for tests
+!tests/data/DB/3_10/site_name-3_10-classified_planet-20211011_155455_52_2262.tif
+!tests/data/DB/3_10/dswx/OPERA_L3_DSWx-HLS_T15QYU_20211011T162221Z_20230906T035547Z_S2A_30_v1.1_B01_WTR.tif
