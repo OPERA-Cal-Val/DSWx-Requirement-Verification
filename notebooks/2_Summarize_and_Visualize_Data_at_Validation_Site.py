@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.1
+#       jupytext_version: 1.15.2
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -52,7 +52,7 @@ df_site_meta = get_validation_metadata_by_site_name(site_name)
 df_site_meta
 
 # %%
-dswx_id = df_site_meta['dswx_id'][0]
+dswx_hls_id = df_site_meta['dswx_hls_id'][0]
 planet_id = df_site_meta['planet_id'][0]
 
 # %%
@@ -83,8 +83,8 @@ presentation_dir.mkdir(exist_ok=True, parents=True)
 raster_path_names = [f'validation-dataset__{site_name}.tif',
                      f'dswx-mask__{site_name}.tif',
                      f'validation-dataset-rprj__{site_name}.tif',
-                     f'cropped-dswx__{dswx_id}.tif',
-                     f'dswx__{dswx_id}.tif'
+                     f'cropped-dswx__{dswx_hls_id}.tif',
+                     f'dswx__{dswx_hls_id}.tif'
                     ]
 raster_paths_dict = {name.split('__')[0]: site_dir / name for name in raster_path_names}
 [path.exists() for path in raster_paths_dict.values()]
@@ -169,7 +169,8 @@ norm = colors.BoundaryNorm(bounds, cmap.N)
 cbar.set_ticklabels(['Not Water', 
                      'Open Water',
                      'Partial Surface Water',
-                     'Snow/Ice','Cloud/Cloud Shadow', 
+                     'HLS Snow/Ice',
+                     'HLS Cloud/Cloud Shadow', 
                      #'Ocean Mask'
                     ],
                     fontsize=fontSize)   
@@ -237,8 +238,8 @@ for plot_type in ['without_mask', 'with_mask']:
     cbar.set_ticklabels(['Not Water', 
                          'Open Water',
                          'Partial Surface Water',
-                         'Snow/Ice',
-                         'Cloud/Cloud Shadow', 
+                         'HLS Snow/Ice',
+                         'HLS Cloud/Cloud Shadow', 
                          #'Ocean Mask'
                         ]
                         ,fontsize=fontSize)   
@@ -555,7 +556,7 @@ stratum_string
 # %%
 latex_0 = "\\begin{verbatim}\n" + "Planet ID: " + planet_id + "\n\\end{verbatim}\n"
 latex_1 = "\\begin{verbatim}\n" + "Site Name: " + site_name + "\n\\end{verbatim}\n"
-latex_2 = "\\begin{verbatim}\n" + "DSWx-ID: " + dswx_id + "\n\\end{verbatim}\n"
+latex_2 = "\\begin{verbatim}\n" + "DSWx-ID: " + dswx_hls_id + "\n\\end{verbatim}\n"
 
 latex = latex_0 + latex_1 + latex_2 + stratum_string
 print(latex)

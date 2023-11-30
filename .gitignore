@@ -86,3 +86,9 @@ notebooks/igarss.py
 
 ## Ignore results.csv
 **/results.csv
+
+## Database
+DB/
+
+## Config yaml for tests
+tests/data/config.yml

@@ -102,12 +102,12 @@ def generate_linked_id_table_for_classified_imagery() -> gpd.GeoDataFrame:
                                   'collocated_dswx': 'hls_id'})
 
     metadata_list = list(map(get_DSWX_doc, tqdm(df_id.hls_id, desc='Retreiving DSWx Metadata')))
-    df_id['dswx_id'] = [item['id'] for item in metadata_list]
+    df_id['dswx_hls_id'] = [item['id'] for item in metadata_list]
     product_urls_list = [item['metadata']['product_urls'] for item in metadata_list]
-    df_id['dswx_urls'] = [' '.join(urls) for urls in product_urls_list]
+    df_id['dswx_hls_urls'] = [' '.join(urls) for urls in product_urls_list]
     df_id['validation_dataset_url'] = df_id.planet_id.map(get_s3_url_of_classified_image)
 
-    columns = ['site_name', 'planet_id', 'dswx_id', 'hls_id', 'dswx_urls',
+    columns = ['site_name', 'planet_id', 'dswx_hls_id', 'hls_id', 'dswx_hls_urls',
                'validation_dataset_url', 'water_stratum', 'geometry']
     df_id = df_id[columns]
     df_id.sort_values(by='site_name', ascending=False, inplace=True)

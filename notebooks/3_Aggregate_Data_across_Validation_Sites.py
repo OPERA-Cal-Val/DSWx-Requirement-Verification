@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.1
+#       jupytext_version: 1.15.2
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -86,7 +86,7 @@ processed_data = list(map(read_trial_data_from_site, sites_processed))
 # %%
 df_all = pd.DataFrame(processed_data)
 columns = df_all.columns
-columns_begin = ['site_name', 'planet_id', 'dswx_id', 'osw_requirement', 'psw_requirement']
+columns_begin = ['site_name', 'planet_id', 'dswx_hls_id', 'osw_requirement', 'psw_requirement']
 columns_end = [c for c in columns if c not in columns_begin]
 df_all = df_all[columns_begin + columns_end]
 df_all.head()

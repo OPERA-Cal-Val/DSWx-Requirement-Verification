@@ -81,7 +81,7 @@ df_site_meta
 # Get all the related ids.
 
 # %%
-dswx_id = df_site_meta['dswx_id'][0]
+dswx_hls_id = df_site_meta['dswx_hls_id'][0]
 planet_id = df_site_meta['planet_id'][0]
 hls_id = df_site_meta['hls_id'][0]
 
@@ -129,7 +129,7 @@ with rasterio.open(val_url) as ds:
 # Again, if the local database path is found in the YML, use it.
 
 # %%
-dswx_url = df_site_meta['dswx_urls'][0].split(' ')[0]
+dswx_url = df_site_meta['dswx_hls_urls'][0].split(' ')[0]
 if verif_params.rel_dswx_db_dir_path is not None:
     dswx_url = verif_params.rel_dswx_db_dir_path / df_site_meta['rel_local_dswx_paths'][0].split(' ')[0]
 dswx_url
@@ -360,10 +360,10 @@ df_trials_agg = df_data_all_trials.aggregate(['mean', 'std', 'median'])
 df_trials_agg = pd.DataFrame(json_normalize(df_trials_agg.to_dict()))
 stat_cols = list(df_trials_agg.columns)
 
-df_trials_agg['dswx_id'] = dswx_id
+df_trials_agg['dswx_hls_id'] = dswx_hls_id
 df_trials_agg['planet_id'] = planet_id
 df_trials_agg['site_name'] = site_name
-df_trials_agg = df_trials_agg[['site_name', 'planet_id', 'dswx_id'] + stat_cols]
+df_trials_agg = df_trials_agg[['site_name', 'planet_id', 'dswx_hls_id'] + stat_cols]
 df_trials_agg.head()
 
 # %% [markdown]
@@ -393,8 +393,8 @@ print(f"PSW Requirement Passing: {psw_req_passed} (Acc: {(mu_psw * 100):1.2f}%)"
 # ## Rasters
 
 # %%
-raster_data_to_serialize = {f'dswx__{dswx_id}.tif': (X_dswx, p_dswx, dswx_colormap),
-                            f'cropped-dswx__{dswx_id}.tif': (X_dswx_c, p_dswx_c, dswx_colormap),
+raster_data_to_serialize = {f'dswx__{dswx_hls_id}.tif': (X_dswx, p_dswx, dswx_colormap),
+                            f'cropped-dswx__{dswx_hls_id}.tif': (X_dswx_c, p_dswx_c, dswx_colormap),
                             f'validation-dataset__{site_name}.tif': (X_val, p_val, dswx_colormap),
                             f'validation-dataset-rprj__{site_name}.tif': (X_val_r, p_val_r, dswx_colormap),
                             f'validation-percent-osw-rprj__{site_name}.tif': (X_perc_r, p_perc_r, None), 

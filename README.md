@@ -50,10 +50,10 @@ We use `jupytext` for better version control of the notebooks. In both cases, we
 
 The validation database consists of:
 
-+ Independently generated 3 meter classified Planet Imagery
++ Independently generated 3 meter classified Planet Imagery - specifically classified into water and not water classes.
 + Coincident provisional DSWx products (these products are historical and not a part of the official DSWx catalog)
 
-These are included in a zipped up file hosted at the PODAAC. The CMR page for the validation database can be found here: https://podaac.jpl.nasa.gov/dataset/OPERA_L3_DSWX-HLS_PROVISIONAL_V0. A permalink for the data is `https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/OPERA_DSWX-HLS_CALVAL_PROVISIONAL_V1/opera-calval-database-dswx.zip`. We recommend using `wget` and `~/.netrc` with Earthdata credentials. Specifically, in your `~/.netrc` put your earthdata credentials as:
+These are included in a zipped up file hosted at the PODAAC. The CMR page for the validation database can be found here: https://podaac.jpl.nasa.gov/dataset/OPERA_L3_DSWX-HLS_PROVISIONAL_V0. A permalink for the data itself is `https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/OPERA_DSWX-HLS_CALVAL_PROVISIONAL_V1/opera-calval-database-dswx.zip`. We recommend using `wget` and `~/.netrc` with Earthdata credentials. Specifically, in your `~/.netrc` put your earthdata credentials as:
 
 ```
 machine urs.earthdata.nasa.gov
@@ -73,7 +73,7 @@ And then unzip:
 unzip opera-calval-database-dswx.zip # unzips to directory called DB/
 ```
 
-Use QGIS to inspect the contents of directory called `DB`. **Note**: if you rename or move this directory - make sure to put the *relative path* of this directory in the `verifications_parameters.yml` (relative to either the notebooks or the script being run).
+Use QGIS to inspect the contents of directory called `DB`. **Note**: if you rename or move this directory - make sure to put the *relative path* of this directory in the `verifications_parameters.yml` (relative to either the notebooks or the script being run). The data can also be downloaded directly from earthdata search [here](https://search.earthdata.nasa.gov/search/granules?p=C2603501575-POCLOUD&pg[0][v]=f&pg[0][gsk]=-start_date&q=dswx&tl=1701297419!3!!).
 
 ## 1. Individual Notebooks over a given Validation Site
 
