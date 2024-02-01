@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -15,9 +15,10 @@
 
 # %% [markdown]
 # # Introduction
-#
+# **Warning**: It is not recommended to run (let alone modify) this notebook - unless you really know what you are doing. This categorizes the metadata for validation and is kept only for provenance of how databases are archived and organized.
 #
 # **Warning**: Since the DSWx-HLS database has been publicly posted, the s3 urls and ES database may not be available. See the [README.md](../Readme.md) for download details. The dataset can be found on earthdata [here](https://search.earthdata.nasa.gov/search/granules?p=C2603501575-POCLOUD&pg[0][v]=f&pg[0][gsk]=-start_date&q=dswx&tl=1701297419!3!!).
+#
 # This notebook is designed to do necessary accounting and organization of the validation datasets and provisional products so that they can be looked up for the remainder of the requirement verification.  Firstly, we regenerate the Validation Table that links the following datasets:
 #
 # 1. Classified Planet Imagery (and their urls)
@@ -52,13 +53,14 @@ from dswx_verification.val_db import get_localized_validation_table, get_classif
 # We can skip this step entirely by setting the below variable to `False`. This will mean that only the localization step is used and we will use the latest table to obtain valid s3 links. This is important because sometimes HySDS Elastic Storage (ES) database will be offline even though the S3 links are still valid.
 
 # %%
-REGENERATE_TABLE_WITH_ES = True
+REGENERATE_TABLE_FOR_DSWX_HLS_WITH_ES = False
 
 # %%
-if not REGENERATE_TABLE_WITH_ES:
+if not REGENERATE_TABLE_FOR_DSWX_HLS_WITH_ES:
     df = get_localized_validation_table()
 else:
     df = generate_linked_id_table_for_classified_imagery()
+print(df.shape)
 df.head()
 
 # %% [markdown]
@@ -223,6 +225,60 @@ with open(local_db_dir / 'software_version.txt', 'w') as f:
 # %%
 if LOCALIZE_DATA:
     shutil.make_archive(local_db_dir, 'zip', local_db_dir)
+
+# %% [markdown]
+# # **WIP** DSWx-S1
+
+# %%
+import boto3
+s3client = boto3.client('s3')
+DSWx_S1_BUCKET_NAME = 'dswx-s1-adt-products'
+resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME)
+objs = resp['Contents']
+
+# %%
+wtr_objs = [o for o in objs if o['Key'][-8:] == '_WTR.tif']
+wtr_objs[:3]
+
+
+# %% [markdown]
+# ## Get WTR urls
+
+# %%
+def get_wtr_urls(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+    return f'https://dswx-s1-adt-products.s3.us-west-2.amazonaws.com/{key}'
+
+wtr_urls = list(map(get_wtr_urls, wtr_objs))
+wtr_urls[:2]
+
+# %% [markdown]
+# ## Get Extent Geometry 
+
+# %%
+from shapely.geometry import box, Polygon
+def get_extent_geo(url: str) -> Polygon:
+    with rasterio.open(url) as ds:
+        extent = list(ds.bounds)
+    return box(*extent)
+#extent_geos = list(map(get_extent_geo, tqdm(wtr_urls)))
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    extent_geos = list(tqdm(executor.map(get_extent_geo, wtr_urls[:]), total=len(wtr_urls)))
+
+# %%
+extent_geos[0]
+
+# %% [markdown]
+# ## Get all other URLs
+
+# %%
+all_dswx_urls
+
+# %% [markdown]
+# ## Get DSWx-S1 Dataframe
+
+# %% [markdown]
+# ##  Spatial join on Val Table
 
 # %% [markdown]
 # # Serialize the Validation Table in package data
