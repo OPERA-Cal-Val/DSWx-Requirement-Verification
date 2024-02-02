@@ -124,11 +124,11 @@ def get_localized_validation_table() -> gpd.GeoDataFrame:
     return gpd.read_file(local_geojson_path)
 
 
-def get_validation_metadata_by_site_name(site_name: str) -> pd.DataFrame:
+def get_validation_metadata_by_site_name(site_name: str, input_product='hls') -> pd.DataFrame:
     df_val = get_localized_validation_table()
     df_val_site = df_val[df_val.site_name == site_name].reset_index(drop=True)
     n = df_val_site.shape[0]
-    if n != 1:
+    if n != 1 and (input_product == 'hls'):
         raise ValueError('The site name did not yeild a unique row in the '
                          'localized metadata')
     return df_val_site

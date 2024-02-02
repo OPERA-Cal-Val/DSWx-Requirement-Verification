@@ -205,7 +205,7 @@ val_paths_relative = list(map(lambda p: p.relative_to(local_db_dir), val_paths))
 
 # %%
 df['rel_local_val_path'] = list(map(str, val_paths_relative))
-df['rel_local_dswx_paths'] = dswx_paths_grouped
+df['rel_local_dswx_hls_paths'] = dswx_paths_grouped
 df.head()
 
 # %% [markdown]
@@ -233,52 +233,180 @@ if LOCALIZE_DATA:
 import boto3
 s3client = boto3.client('s3')
 DSWx_S1_BUCKET_NAME = 'dswx-s1-adt-products'
-resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME)
-objs = resp['Contents']
+
+paginator = s3client.get_paginator('list_objects')
+
+# Specify additional parameters as needed
+page_iterator = paginator.paginate(Bucket=DSWx_S1_BUCKET_NAME)
+objs = []
+for pg in page_iterator:
+    if 'Contents' in pg:
+        objs += pg['Contents']
+    
+# resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME)
+# objs = resp['Contents']
+len(objs)
+
 
 # %%
 wtr_objs = [o for o in objs if o['Key'][-8:] == '_WTR.tif']
-wtr_objs[:3]
+wtr_objs[:3], len(wtr_objs)
 
 
 # %% [markdown]
 # ## Get WTR urls
 
 # %%
-def get_wtr_urls(wtr_obj: dict) -> str:
+def extract_url(wtr_obj: dict) -> str:
     key = wtr_obj['Key']
-    return f'https://dswx-s1-adt-products.s3.us-west-2.amazonaws.com/{key}'
+    return f'https://{DSWx_S1_BUCKET_NAME}.s3.us-west-2.amazonaws.com/{key}'
 
-wtr_urls = list(map(get_wtr_urls, wtr_objs))
+wtr_urls = list(map(extract_url, wtr_objs))
 wtr_urls[:2]
+
+# %%
+len(wtr_urls)
 
 # %% [markdown]
 # ## Get Extent Geometry 
 
 # %%
 from shapely.geometry import box, Polygon
-def get_extent_geo(url: str) -> Polygon:
+from rasterio.crs import CRS
+
+def get_extent_geo(url: str) -> tuple[Polygon, CRS]:
     with rasterio.open(url) as ds:
         extent = list(ds.bounds)
-    return box(*extent)
+        crs = ds.crs
+    return box(*extent), crs
 #extent_geos = list(map(get_extent_geo, tqdm(wtr_urls)))
 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-    extent_geos = list(tqdm(executor.map(get_extent_geo, wtr_urls[:]), total=len(wtr_urls)))
+    out = list(tqdm(executor.map(get_extent_geo, wtr_urls[:]), total=len(wtr_urls)))
+
+# %%
+extent_geos, crs_lst = zip(*out)
+
+# %%
+crs_lst[0]
 
 # %%
 extent_geos[0]
 
 # %% [markdown]
+# ## Reproject
+
+# %%
+import pyproj
+from shapely.ops import transform
+from itertools import starmap
+
+crs_4326 = CRS.from_epsg(4326)
+
+def reproject_one_geo_to_4326(geo: Polygon, utm_crs: CRS) -> Polygon:
+    project = pyproj.Transformer.from_crs(utm_crs, crs_4326, always_xy=True).transform
+    return transform(project, geo)
+
+
+# %%
+extent_geos_4326 = list(starmap(reproject_one_geo_to_4326, zip(extent_geos, tqdm(crs_lst))))
+
+# %%
+extent_geos_4326[0]
+
+
+# %% [markdown]
 # ## Get all other URLs
 
 # %%
-all_dswx_urls
+def get_prefix(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+
+    fn = key.split('/')[-1]
+    init_prefix = key[:-len(fn)]
+    
+    tokens = fn.split('_')
+    prefix = init_prefix + '_'.join(tokens[:4])
+    return prefix
+
+def get_all_urls(wtr_obj: dict) -> list:
+    prefix = get_prefix(wtr_obj)
+    resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME, Prefix=prefix)
+    objs = resp['Contents']
+    objs_tifs = [o for o in objs if o['Key'][-4:] == '.tif']
+    return list(map(extract_url, objs_tifs))
+
+def get_urls_str(wtr_obj: dict) -> str:
+    urls_str = ' '.join(get_all_urls(wtr_obj))
+    return urls_str
+
+
+urls_str_lst = list(map(get_urls_str, tqdm(wtr_objs)))
+urls_str_lst[-1]
+
+
+# %% [markdown]
+# ## Other Metadata
+
+# %%
+def get_tile_id(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+    fn = key.split('/')[-1]
+    return fn.split('_')[3]
+
+def get_dswx_s1_id(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+    fn = key.split('/')[-1]
+    return fn[:-4]
+
+
+# %%
+mgrs_ids = list(map(get_tile_id, wtr_objs))
+dswx_s1_ids = list(map(get_dswx_s1_id, wtr_objs))
 
 # %% [markdown]
 # ## Get DSWx-S1 Dataframe
 
+# %%
+df_dswx_s1 = gpd.GeoDataFrame({'dswx_s1_id': dswx_s1_ids,
+                               'mgrs_tile_id': mgrs_ids,
+                               'dswx_s1_urls': urls_str_lst},
+                              geometry=extent_geos_4326,
+                              crs=crs_4326)
+
+# %%
+df_dswx_s1.to_file('dswx_s1_data.geojson', driver='GeoJSON')
+
+# %%
+df_dswx_s1.plot()
+
+# %%
+df_dswx_s1.shape
+
+# %%
+cols_dswx_s1 = [col for col in df_dswx_s1.columns if col != 'geometry']
+df_no_dswx_s1 = df[[col for col in df.columns if col not in cols_dswx_s1]]
+df_no_dswx_s1
+
 # %% [markdown]
 # ##  Spatial join on Val Table
+
+# %%
+df_no_dswx_s1.shape
+
+# %%
+df_joined = gpd.sjoin(df_no_dswx_s1, df_dswx_s1, how='left', predicate='intersects')
+df_joined.drop(columns=['index_right'], inplace=True)
+print(df_joined.shape)
+df_joined.head()
+
+# %%
+df_joined.dswx_s1_urls.isna().sum()
+
+# %%
+df_joined[df_joined.dswx_s1_urls.isna()]
+
+# %%
+df_all = df_joined.copy()
 
 # %% [markdown]
 # # Serialize the Validation Table in package data
@@ -289,7 +417,9 @@ all_dswx_urls
 geojson_path = get_path_of_validation_geojson()
 
 # %%
-df.to_file(geojson_path, driver='GeoJSON')
+df_all.to_file(geojson_path, driver='GeoJSON')
 
 # %%
-df.to_csv(geojson_path.with_suffix('.csv'), index=False)
+df_all.to_csv(geojson_path.with_suffix('.csv'), index=False)
+
+# %%

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -58,8 +58,9 @@ import json
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '3_10'
+site_name = '4_8'
 yaml_file = 'verification_parameters.yml'
+input_product = 's1'
 
 # %% [markdown]
 # ## Load parameters
@@ -76,7 +77,7 @@ verif_params
 # We get the row of the validation table corresponding to our `site_name`.
 
 # %%
-df_site_meta = get_validation_metadata_by_site_name(site_name)
+df_site_meta = get_validation_metadata_by_site_name(site_name, input_product=input_product)
 df_site_meta
 
 # %% [markdown]
@@ -84,6 +85,7 @@ df_site_meta
 
 # %%
 dswx_hls_id = df_site_meta['dswx_hls_id'][0]
+dswx_s1_id = df_site_meta['dswx_s1_id'][0]
 planet_id = df_site_meta['planet_id'][0]
 hls_id = df_site_meta['hls_id'][0]
 
@@ -125,15 +127,43 @@ with rasterio.open(val_url) as ds:
     p_val = ds.profile
     val_bounds = list(ds.bounds)
 
+
 # %% [markdown]
 # ## DSWx
 #
+# Set up keys
+
+# %%
+def get_url_key(input_product):
+    match input_product:
+        case 'hls':
+            return 'dswx_hls_urls'
+        case 's1':
+            return 'dswx_s1_urls'
+
+url_key = get_url_key(input_product)
+
+
+# %%
+def get_loc_path_key(input_product):
+    match input_product:
+        case 'hls':
+            return 'rel_local_dswx_hls_paths'
+        case 's1':
+            return 'rel_local_dswx_s1_paths'
+
+rel_path_key = get_loc_path_key(input_product)
+
+# %%
+rel_path_key, url_key
+
+# %% [markdown]
 # Again, if the local database path is found in the YML, use it.
 
 # %%
-dswx_url = df_site_meta['dswx_hls_urls'][0].split(' ')[0]
+dswx_url = df_site_meta[url_key][0].split(' ')[0]
 if verif_params.rel_dswx_db_dir_path is not None:
-    dswx_url = verif_params.rel_dswx_db_dir_path / df_site_meta['rel_local_dswx_paths'][0].split(' ')[0]
+    dswx_url = verif_params.rel_dswx_db_dir_path / df_site_meta[rel_path_key][0].split(' ')[0]
 dswx_url
 
 # %%
@@ -158,6 +188,9 @@ X_dswx_c, p_dswx_c = read_raster_from_window(dswx_url,
                                              df_val_bounds.total_bounds,
                                              df_val_bounds.crs)
 X_dswx_c = X_dswx_c[0, ...]
+
+# %%
+np.unique(X_dswx_c)
 
 # %% [markdown]
 # ## Sample Plot
@@ -212,6 +245,14 @@ X_val_r, p_val_r = reclassify_validation_dataset_to_dswx_frame(X_val,
                                                                p_dswx_c_float,
                                                                open_water_label=1,
                                                                minimum_nodata_percent_for_exclusion=.5)
+
+# %% [markdown]
+# If we use non-HLS datasets, we are going to exclude partial surface water pixels.
+
+# %%
+if input_product != 'hls':
+    X_val_r[X_val_r == 2] = 255
+np.unique(X_val_r)
 
 # %% [markdown]
 # Again, we plot for interactivity. See subsequent notebooks for finalized plots with colorbars and axes.
@@ -423,3 +464,6 @@ json_data = df_trials_agg.to_dict('records')[0]
 
 # %% editable=true slideshow={"slide_type": ""}
 json.dump(json_data, open(site_dir / 'trial_stats.json', 'w'), indent=2)
+
+# %%
+a
