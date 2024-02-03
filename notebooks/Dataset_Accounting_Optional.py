@@ -252,6 +252,12 @@ len(objs)
 wtr_objs = [o for o in objs if o['Key'][-8:] == '_WTR.tif']
 wtr_objs[:3], len(wtr_objs)
 
+# %% [markdown]
+# There are some duplicates
+
+# %%
+[wtr_obj for wtr_obj in wtr_objs if 'T47ULQ' in wtr_obj['Key']]
+
 
 # %% [markdown]
 # ## Get WTR urls
@@ -280,7 +286,7 @@ def get_extent_geo(url: str) -> tuple[Polygon, CRS]:
         crs = ds.crs
     return box(*extent), crs
 #extent_geos = list(map(get_extent_geo, tqdm(wtr_urls)))
-with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
     out = list(tqdm(executor.map(get_extent_geo, wtr_urls[:]), total=len(wtr_urls)))
 
 # %%
@@ -325,7 +331,7 @@ def get_prefix(wtr_obj: dict) -> str:
     init_prefix = key[:-len(fn)]
     
     tokens = fn.split('_')
-    prefix = init_prefix + '_'.join(tokens[:4])
+    prefix = init_prefix + '_'.join(tokens[:6])
     return prefix
 
 def get_all_urls(wtr_obj: dict) -> list:
@@ -355,9 +361,12 @@ def get_tile_id(wtr_obj: dict) -> str:
 
 def get_dswx_s1_id(wtr_obj: dict) -> str:
     key = wtr_obj['Key']
-    fn = key.split('/')[-1]
+    fn = key.split('/')[-1].replace('_B01_WTR', '')
     return fn[:-4]
 
+
+# %%
+get_dswx_s1_id(wtr_objs[0])
 
 # %%
 mgrs_ids = list(map(get_tile_id, wtr_objs))
@@ -372,6 +381,8 @@ df_dswx_s1 = gpd.GeoDataFrame({'dswx_s1_id': dswx_s1_ids,
                                'dswx_s1_urls': urls_str_lst},
                               geometry=extent_geos_4326,
                               crs=crs_4326)
+df_dswx_s1 = df_dswx_s1.drop_duplicates(subset=['dswx_s1_id'])
+df_dswx_s1.shape
 
 # %%
 df_dswx_s1.to_file('dswx_s1_data.geojson', driver='GeoJSON')
@@ -382,31 +393,41 @@ df_dswx_s1.plot()
 # %%
 df_dswx_s1.shape
 
+# %% [markdown]
+# ## Prepare for Spatial Join
+
 # %%
 cols_dswx_s1 = [col for col in df_dswx_s1.columns if col != 'geometry']
-df_no_dswx_s1 = df[[col for col in df.columns if col not in cols_dswx_s1]]
-df_no_dswx_s1
+df_for_spatial_join = df[[col for col in df.columns if col not in cols_dswx_s1 + ['rel_local_dswx_paths']]].reset_index(drop=True)
+print(df_for_spatial_join.shape)
+df_for_spatial_join.drop_duplicates(subset=['site_name'], keep='first', inplace=True)
+print(df_for_spatial_join.shape)
+
 
 # %% [markdown]
 # ##  Spatial join on Val Table
 
 # %%
-df_no_dswx_s1.shape
+print(df_dswx_s1.shape)
+df_dswx_s1_no_dups = df_dswx_s1.sort_values(by='dswx_s1_id').drop_duplicates(subset='mgrs_tile_id', keep='last').reset_index(drop=True)
+df_dswx_s1_no_dups.shape
 
 # %%
-df_joined = gpd.sjoin(df_no_dswx_s1, df_dswx_s1, how='left', predicate='intersects')
+df_joined = gpd.sjoin(df_for_spatial_join, df_dswx_s1_no_dups, how='left', predicate='intersects')
 df_joined.drop(columns=['index_right'], inplace=True)
 print(df_joined.shape)
 df_joined.head()
 
 # %%
-df_joined.dswx_s1_urls.isna().sum()
-
-# %%
+print(df_joined.dswx_s1_urls.isna().sum())
 df_joined[df_joined.dswx_s1_urls.isna()]
 
 # %%
 df_all = df_joined.copy()
+
+# %%
+# duplicated_sites = df_all[df_all.duplicated(subset=['site_name'])].site_name.tolist()
+# df_all[df_all.site_name.isin(duplicate_sites)].to_dict('records')[2:4]
 
 # %% [markdown]
 # # Serialize the Validation Table in package data
@@ -421,5 +442,3 @@ df_all.to_file(geojson_path, driver='GeoJSON')
 
 # %%
 df_all.to_csv(geojson_path.with_suffix('.csv'), index=False)
-
-# %%

@@ -167,7 +167,6 @@ if verif_params.rel_dswx_db_dir_path is not None:
 dswx_url
 
 # %%
-
 with rasterio.open(dswx_url) as ds:
     X_dswx = ds.read(1)
     p_dswx = ds.profile
@@ -312,12 +311,26 @@ y_dswx = X_dswx_c[~dswx_mask]
 samples_per_label = get_equal_samples_per_label(y_val, [0, 1, 2], 1_000)
 samples_per_label
 
+
 # %% [markdown]
 # This routine gives us the flattened indices of equal samples from each label with specified number of trials (in this case, this is 1,000).
 
 # %%
+def get_labels(input_product):
+    match input_product:
+        case 'hls':
+            return [0, 1, 2]
+        case 's1':
+            return [0, 1]
+        case _:
+            raise NotImplementedError('input_product must be s1 or hls')
+
+labels = get_labels(input_product)
+labels
+
+# %%
 sample_indices = generate_random_indices_for_classes(y_val, 
-                                                     labels = [0, 1, 2],
+                                                     labels = labels,
                                                      total_target_sample_size=1_000,
                                                      n_trials=100)
 y_dswx_trails = [y_dswx[s] for s in sample_indices]
@@ -421,13 +434,12 @@ mu_psw = df_trials_agg[psw_mean_acc_key].values[0]
 
 osw_req_passed = (mu_osw > OSW_ACCURACY_REQ)
 df_trials_agg['osw_requirement'] = osw_req_passed
-
-psw_req_passed = (mu_psw > PSW_ACCURACY_REQ)
-df_trials_agg['psw_requirement'] = psw_req_passed
-
-# %%
 print(f"OSW Requirement Passing: {osw_req_passed} (Acc: {(mu_osw * 100):1.2f}%)")
-print(f"PSW Requirement Passing: {psw_req_passed} (Acc: {(mu_psw * 100):1.2f}%)")
+
+if input_product == 'hls':
+    psw_req_passed = (mu_psw > PSW_ACCURACY_REQ)
+    df_trials_agg['psw_requirement'] = psw_req_passed
+    print(f"PSW Requirement Passing: {psw_req_passed} (Acc: {(mu_psw * 100):1.2f}%)")
 
 # %% [markdown]
 # # Serialize
@@ -462,8 +474,11 @@ paths
 # %%
 json_data = df_trials_agg.to_dict('records')[0]
 
-# %% editable=true slideshow={"slide_type": ""}
-json.dump(json_data, open(site_dir / 'trial_stats.json', 'w'), indent=2)
-
 # %%
-a
+json_data_f = json_data
+if input_product != 'hls':
+    json_data_f = {k:v for (k, v) in json_data.items() if 'Partial_Surface_Water' not in k}
+json_data_f
+
+# %% editable=true slideshow={"slide_type": ""}
+json.dump(json_data_f, open(site_dir / 'trial_stats.json', 'w'), indent=2)
