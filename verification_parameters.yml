@@ -2,11 +2,12 @@ verification_parameters:
   pixels_sampled_per_trial: 1000
   pixels_distributed_with_respect_to_val: True
   number_of_trials: 100
-  data_dir: out/dswx_hls
+  input_product: 's1'
+  data_dir: out/latest
   confidence_classes_to_strictly_include:  
   # If no `rel_dswx_db_dir_path` is specified, uses s3 urls. 
   # Else uses specified relative path to directory.
   # Make sure relative path is given relative to current working directory (or notebook)
-  rel_dswx_db_dir_path: DB 
+  rel_dswx_db_dir_path:  
 presentation_parameters:
   presentation_dir: presentation_material

@@ -82,6 +82,7 @@ def get_site_dirs_for_presentation(data_dir: str | Path) -> list:
 
 # %%
 site_dirs = get_site_dirs_for_presentation(presentation_dir)
+site_dirs
 
 # %%
 slides_list = list(map(generate_one_slide, site_dirs))

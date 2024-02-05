@@ -99,7 +99,8 @@ all_data_dir = Path(verif_params.data_dir)
 all_data_dir.mkdir(exist_ok=True, parents=True)
 
 # %%
-site_dir = all_data_dir / site_name
+prod_id = dswx_hls_id if verif_params.input_product == 'hls' else dswx_s1_id
+site_dir = all_data_dir / f'{site_name}--{prod_id}'
 site_dir.mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
