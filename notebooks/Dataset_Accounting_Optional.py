@@ -420,7 +420,7 @@ df_joined.head()
 
 # %%
 print(df_joined.dswx_s1_urls.isna().sum())
-df_joined[df_joined.dswx_s1_urls.isna()]
+df_joined[df_joined.dswx_s1_urls.isna()].site_name.tolist()
 
 # %%
 df_all = df_joined.copy()
