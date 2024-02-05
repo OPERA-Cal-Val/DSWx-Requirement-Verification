@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -147,26 +147,37 @@ df_proc.head()
 
 # %%
 n_osw_passes = df_proc.osw_requirement.sum()
-n_pws_passes = df_proc.psw_requirement.sum()
-n_both_pass = (df_proc.osw_requirement & df_proc.psw_requirement).sum()
-n_pws_passes, n_osw_passes, n_both_pass
+print('OSW passes:', n_osw_passes)
+if verif_params.input_product == 'hls':
+    n_pws_passes = df_proc.psw_requirement.sum()
+    n_both_pass = (df_proc.osw_requirement & df_proc.psw_requirement).sum()
+    print(n_pws_passes, n_both_pass)
 
 # %%
 n_osw_fails = (~df_proc.osw_requirement).sum()
-n_pws_fails = (~df_proc.psw_requirement).sum()
-n_both_fail = (~df_proc.osw_requirement | ~df_proc.psw_requirement).sum()
-n_osw_fails, n_pws_fails, n_both_fail
+print('OSW Failures:', n_osw_fails)
+if verif_params.input_product == 'hls':
+    n_pws_fails = (~df_proc.psw_requirement).sum()
+    n_both_fail = (~df_proc.osw_requirement | ~df_proc.psw_requirement).sum()
+    print(n_osw_fails, n_pws_fails, n_both_fail)
 
 # %%
-df_passes = pd.DataFrame([{'Class': 'Open Surface Water (OSW)',
+table_data_n_passes
+
+# %%
+table_data_n_passes = [{'Class': 'Open Surface Water (OSW)',
                           'Pass': n_osw_passes,
-                          'Not Pass': n_osw_fails},
-                         {'Class': 'Partial Surface Water (PSW)',
+                          'Not Pass': n_osw_fails}]
+if verif_params.input_product == 'hls':
+    table_data_n_passes.append({'Class': 'Partial Surface Water (PSW)',
                           'Pass': n_pws_passes,
-                          'Not Pass': n_pws_fails},
-                         {'Class': 'Both (OSW + PSW)',
+                          'Not Pass': n_pws_fails})
+    table_data_n_passes.append({'Class': 'Both (OSW + PSW)',
                           'Pass': n_both_pass,
-                          'Not Pass': n_both_fail}])
+                          'Not Pass': n_both_fail})
+
+# %%
+df_passes = pd.DataFrame(table_data_n_passes)
 df_passes = df_passes.set_index('Class')
 df_passes
 

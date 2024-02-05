@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -37,7 +37,7 @@ import yaml
 # # Parameters
 
 # %% tags=["parameters"]
-site_name = '3_10'
+site_name = '4_8'
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]
@@ -350,7 +350,14 @@ dict_for_conf = {key: val for (key, val) in metric_data.items()
 dict_for_conf
 
 # %%
-labels = ['Not_Water',  'Open_Surface_Water', 'Partial_Surface_Water']
+labels = ['Not_Water',  'Open_Surface_Water', 'Partial_Surface_Water'] if verif_params.input_product == 'hls' else ['Not_Water',  'Open_Surface_Water']
+labels
+
+# %%
+label_acronyms = ['NW', 'OSW', 'PSW'] if verif_params.input_product == 'hls' else ['NW', 'OSW']
+label_acronyms
+
+# %%
 conf_mean = [[dict_for_conf.get(f'confusion_matrix.{label_1}_OPERA_DSWx.{label_2}_OPERA_Validation.mean', 0)
                        for label_1 in labels] 
                       for label_2 in labels]
@@ -367,9 +374,13 @@ conf_data = [[f'{mu:1.2f} ({std:1.2f})' for (mu, std) in zip(mu_list, std_list)]
 conf_data
 
 # %%
+labels_dswx = ['NW (DSWx)', 'OSW (DSWx)', 'PSW (DSWx)'] if verif_params.input_product == 'hls' else ['NW (DSWx)', 'OSW (DSWx)']
+labels_val = ['NW (Val)', 'OSW (Val)', 'PSW (Val)'] if verif_params.input_product == 'hls' else ['NW (Val)', 'OSW (Val)']
+
+# %%
 df_confusion = pd.DataFrame(conf_data,
-                            index=['NW (DSWx)', 'OSW (DSWx)', 'PSW (DSWx)'],
-                            columns=['NW (Val)', 'OSW (Val)', 'PSW (Val)']
+                            index=labels_dswx,
+                            columns=labels_val
                            )
 df_confusion
 
@@ -386,25 +397,30 @@ osw_mu = metric_data['acc_per_class.Open_Surface_Water.mean']
 osw_std = metric_data['acc_per_class.Open_Surface_Water.std']
 osw_req = metric_data['osw_requirement']
 
-psw_mu = metric_data['acc_per_class.Partial_Surface_Water.mean']
-psw_std = metric_data['acc_per_class.Partial_Surface_Water.std']
-psw_req = metric_data['psw_requirement']
+if verif_params.input_product == 'hls':
+    psw_mu = metric_data['acc_per_class.Partial_Surface_Water.mean']
+    psw_std = metric_data['acc_per_class.Partial_Surface_Water.std']
+    psw_req = metric_data['psw_requirement']
 
 bw_mu = metric_data['binary_water_acc.All.mean']
 bw_std = metric_data['binary_water_acc.All.std']
 
 # %%
+table_data_req = [{'Class': 'OSW',
+                'OPERA Req.': osw_req,
+                'Accuracy ($\%$)': f'{osw_mu * 100:1.2f} ({osw_std * 100:1.2f})'},
+                {'Class': 'Binary Water',
+                'OPERA Req.': 'N/A',
+                'Accuracy ($\%$)': f'{bw_mu * 100:1.2f} ({bw_std * 100:1.2f})'}]
+if verif_params.input_product == 'hls':
+    table_data_req.append({'Class': 'PSW',
+                       'OPERA Req.': psw_req,
+                        'Accuracy ($\%$)': f'{psw_mu * 100:1.2f} ({psw_std * 100:1.2f})'})
+table_data_req
 
-df_requirement = pd.DataFrame([{'Class': 'PSW',
-                                'OPERA Req.': psw_req,
-                                'Accuracy ($\%$)': f'{psw_mu * 100:1.2f} ({psw_std * 100:1.2f})'},
-                               {'Class': 'OSW',
-                                'OPERA Req.': osw_req,
-                                'Accuracy ($\%$)': f'{osw_mu * 100:1.2f} ({osw_std * 100:1.2f})'},
-                               {'Class': 'Binary Water',
-                                'OPERA Req.': 'N/A',
-                                'Accuracy ($\%$)': f'{bw_mu * 100:1.2f} ({bw_std * 100:1.2f})'}
-                              ])
+# %%
+
+df_requirement = pd.DataFrame(table_data_req)
 
 def labeler(val):
     if val:
@@ -475,6 +491,8 @@ area_data = [{'Type': 'Val',
               'Area ($\%$)': (X_dswx_c[~dswx_mask] == 0).sum() / (~dswx_mask).sum() * 100
              }
             ]
+if verif_params.input_product != 'hls':
+    area_data = [d for d in area_data if d['Class'] != 'PSW']
 df_area = pd.DataFrame(area_data)
 df_area
 
@@ -513,16 +531,16 @@ def get_metric(data: dict, met: str, class_label: str, stat: str):
         return data.get(f'{met}.{class_label}.{stat}', np.nan) * 100
 
 om_com_data = {f'{stat[0]}_{format_metric(met)}_{format_label(class_label)}': get_metric(data, met, class_label, stat)
-              for class_label in ['Not_Water', 'Open_Surface_Water', 'Partial_Surface_Water']
+              for class_label in labels
               for stat in ['mean', 'std']
               for met in ['precision', 'recall']}
 om_com_data = {key: f'{val:1.2f}' for key, val in om_com_data.items()}
 om_com_data
 
 # %%
-table_data = {'Class': ['NW', 'OSW', 'PSW'],
-               'Commission Error ($\%$)': [om_com_data[f'm_co_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in ['NW', 'OSW', 'PSW']],
-               'Ommision Error ($\%$)': [om_com_data[f'm_om_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in ['NW', 'OSW', 'PSW']]
+table_data = {'Class': label_acronyms,
+               'Commission Error ($\%$)': [om_com_data[f'm_co_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in label_acronyms],
+               'Ommision Error ($\%$)': [om_com_data[f'm_om_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in label_acronyms]
               }
 
 df_om_co = pd.DataFrame(table_data)

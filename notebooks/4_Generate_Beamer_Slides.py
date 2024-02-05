@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -82,6 +82,7 @@ def get_site_dirs_for_presentation(data_dir: str | Path) -> list:
 
 # %%
 site_dirs = get_site_dirs_for_presentation(presentation_dir)
+site_dirs
 
 # %%
 slides_list = list(map(generate_one_slide, site_dirs))

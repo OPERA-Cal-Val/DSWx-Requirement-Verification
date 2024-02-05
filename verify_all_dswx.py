@@ -29,10 +29,18 @@ SITE_NOTEBOOKS_RELATIVE_PATHS = [repo_dir / 'notebooks/1_Verification_Metrics_at
               help=('Site name to pass as parameter e.g. 3_10 to verification; used mainly for testing CLI; '
                     'Will still aggregate all data that has been serialized')
               )
+@click.option('--sites-to-exclude',
+              default=None,
+              type=str,
+              multiple=True,
+              required=False,
+              help=('Sites to exclude; for experimental validation')
+              )
 @click.command()
 def main(yaml_config: str,
          output_notebooks_dir: str = None,
-         sites: list = None):
+         sites: list = None,
+         sites_to_exclude: list = None):
     p = output_notebooks_dir or 'out_notebooks'
     ipynb_dir = Path(p)
     ipynb_dir.mkdir(exist_ok=True, parents=True)
@@ -44,6 +52,12 @@ def main(yaml_config: str,
         if not all(valid_sites):
             raise ValueError('Site Names must be in the existing validation table e.g. 3_10')
         site_names = sites
+
+    if sites_to_exclude:
+        valid_sites = [site in site_names for site in sites_to_exclude]
+        if not all(valid_sites):
+            raise ValueError('Site Names to exclude must be in the existing validation table e.g. 3_10')
+        site_names = [site for site in site_names if site not in sites_to_exclude]
 
     for in_nb in SITE_NOTEBOOKS_RELATIVE_PATHS:
         print(f'Using the {in_nb.name} template')

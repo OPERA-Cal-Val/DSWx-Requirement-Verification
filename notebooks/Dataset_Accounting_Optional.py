@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -15,9 +15,10 @@
 
 # %% [markdown]
 # # Introduction
-#
+# **Warning**: It is not recommended to run (let alone modify) this notebook - unless you really know what you are doing. This categorizes the metadata for validation and is kept only for provenance of how databases are archived and organized.
 #
 # **Warning**: Since the DSWx-HLS database has been publicly posted, the s3 urls and ES database may not be available. See the [README.md](../Readme.md) for download details. The dataset can be found on earthdata [here](https://search.earthdata.nasa.gov/search/granules?p=C2603501575-POCLOUD&pg[0][v]=f&pg[0][gsk]=-start_date&q=dswx&tl=1701297419!3!!).
+#
 # This notebook is designed to do necessary accounting and organization of the validation datasets and provisional products so that they can be looked up for the remainder of the requirement verification.  Firstly, we regenerate the Validation Table that links the following datasets:
 #
 # 1. Classified Planet Imagery (and their urls)
@@ -52,13 +53,14 @@ from dswx_verification.val_db import get_localized_validation_table, get_classif
 # We can skip this step entirely by setting the below variable to `False`. This will mean that only the localization step is used and we will use the latest table to obtain valid s3 links. This is important because sometimes HySDS Elastic Storage (ES) database will be offline even though the S3 links are still valid.
 
 # %%
-REGENERATE_TABLE_WITH_ES = True
+REGENERATE_TABLE_FOR_DSWX_HLS_WITH_ES = False
 
 # %%
-if not REGENERATE_TABLE_WITH_ES:
+if not REGENERATE_TABLE_FOR_DSWX_HLS_WITH_ES:
     df = get_localized_validation_table()
 else:
     df = generate_linked_id_table_for_classified_imagery()
+print(df.shape)
 df.head()
 
 # %% [markdown]
@@ -203,7 +205,7 @@ val_paths_relative = list(map(lambda p: p.relative_to(local_db_dir), val_paths))
 
 # %%
 df['rel_local_val_path'] = list(map(str, val_paths_relative))
-df['rel_local_dswx_paths'] = dswx_paths_grouped
+df['rel_local_dswx_hls_paths'] = dswx_paths_grouped
 df.head()
 
 # %% [markdown]
@@ -225,6 +227,209 @@ if LOCALIZE_DATA:
     shutil.make_archive(local_db_dir, 'zip', local_db_dir)
 
 # %% [markdown]
+# # **WIP** DSWx-S1
+
+# %%
+import boto3
+s3client = boto3.client('s3')
+DSWx_S1_BUCKET_NAME = 'dswx-s1-adt-products'
+
+paginator = s3client.get_paginator('list_objects')
+
+# Specify additional parameters as needed
+page_iterator = paginator.paginate(Bucket=DSWx_S1_BUCKET_NAME)
+objs = []
+for pg in page_iterator:
+    if 'Contents' in pg:
+        objs += pg['Contents']
+    
+# resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME)
+# objs = resp['Contents']
+len(objs)
+
+
+# %%
+wtr_objs = [o for o in objs if o['Key'][-8:] == '_WTR.tif']
+wtr_objs[:3], len(wtr_objs)
+
+# %% [markdown]
+# There are some duplicates
+
+# %%
+[wtr_obj for wtr_obj in wtr_objs if 'T47ULQ' in wtr_obj['Key']]
+
+
+# %% [markdown]
+# ## Get WTR urls
+
+# %%
+def extract_url(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+    return f'https://{DSWx_S1_BUCKET_NAME}.s3.us-west-2.amazonaws.com/{key}'
+
+wtr_urls = list(map(extract_url, wtr_objs))
+wtr_urls[:2]
+
+# %%
+len(wtr_urls)
+
+# %% [markdown]
+# ## Get Extent Geometry 
+
+# %%
+from shapely.geometry import box, Polygon
+from rasterio.crs import CRS
+
+def get_extent_geo(url: str) -> tuple[Polygon, CRS]:
+    with rasterio.open(url) as ds:
+        extent = list(ds.bounds)
+        crs = ds.crs
+    return box(*extent), crs
+#extent_geos = list(map(get_extent_geo, tqdm(wtr_urls)))
+with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+    out = list(tqdm(executor.map(get_extent_geo, wtr_urls[:]), total=len(wtr_urls)))
+
+# %%
+extent_geos, crs_lst = zip(*out)
+
+# %%
+crs_lst[0]
+
+# %%
+extent_geos[0]
+
+# %% [markdown]
+# ## Reproject
+
+# %%
+import pyproj
+from shapely.ops import transform
+from itertools import starmap
+
+crs_4326 = CRS.from_epsg(4326)
+
+def reproject_one_geo_to_4326(geo: Polygon, utm_crs: CRS) -> Polygon:
+    project = pyproj.Transformer.from_crs(utm_crs, crs_4326, always_xy=True).transform
+    return transform(project, geo)
+
+
+# %%
+extent_geos_4326 = list(starmap(reproject_one_geo_to_4326, zip(extent_geos, tqdm(crs_lst))))
+
+# %%
+extent_geos_4326[0]
+
+
+# %% [markdown]
+# ## Get all other URLs
+
+# %%
+def get_prefix(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+
+    fn = key.split('/')[-1]
+    init_prefix = key[:-len(fn)]
+    
+    tokens = fn.split('_')
+    prefix = init_prefix + '_'.join(tokens[:6])
+    return prefix
+
+def get_all_urls(wtr_obj: dict) -> list:
+    prefix = get_prefix(wtr_obj)
+    resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME, Prefix=prefix)
+    objs = resp['Contents']
+    objs_tifs = [o for o in objs if o['Key'][-4:] == '.tif']
+    return list(map(extract_url, objs_tifs))
+
+def get_urls_str(wtr_obj: dict) -> str:
+    urls_str = ' '.join(get_all_urls(wtr_obj))
+    return urls_str
+
+
+urls_str_lst = list(map(get_urls_str, tqdm(wtr_objs)))
+urls_str_lst[-1]
+
+
+# %% [markdown]
+# ## Other Metadata
+
+# %%
+def get_tile_id(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+    fn = key.split('/')[-1]
+    return fn.split('_')[3]
+
+def get_dswx_s1_id(wtr_obj: dict) -> str:
+    key = wtr_obj['Key']
+    fn = key.split('/')[-1].replace('_B01_WTR', '')
+    return fn[:-4]
+
+
+# %%
+get_dswx_s1_id(wtr_objs[0])
+
+# %%
+mgrs_ids = list(map(get_tile_id, wtr_objs))
+dswx_s1_ids = list(map(get_dswx_s1_id, wtr_objs))
+
+# %% [markdown]
+# ## Get DSWx-S1 Dataframe
+
+# %%
+df_dswx_s1 = gpd.GeoDataFrame({'dswx_s1_id': dswx_s1_ids,
+                               'mgrs_tile_id': mgrs_ids,
+                               'dswx_s1_urls': urls_str_lst},
+                              geometry=extent_geos_4326,
+                              crs=crs_4326)
+df_dswx_s1 = df_dswx_s1.drop_duplicates(subset=['dswx_s1_id'])
+df_dswx_s1.shape
+
+# %%
+df_dswx_s1.to_file('dswx_s1_data.geojson', driver='GeoJSON')
+
+# %%
+df_dswx_s1.plot()
+
+# %%
+df_dswx_s1.shape
+
+# %% [markdown]
+# ## Prepare for Spatial Join
+
+# %%
+cols_dswx_s1 = [col for col in df_dswx_s1.columns if col != 'geometry']
+df_for_spatial_join = df[[col for col in df.columns if col not in cols_dswx_s1 + ['rel_local_dswx_paths']]].reset_index(drop=True)
+print(df_for_spatial_join.shape)
+df_for_spatial_join.drop_duplicates(subset=['site_name'], keep='first', inplace=True)
+print(df_for_spatial_join.shape)
+
+
+# %% [markdown]
+# ##  Spatial join on Val Table
+
+# %%
+print(df_dswx_s1.shape)
+df_dswx_s1_no_dups = df_dswx_s1.sort_values(by='dswx_s1_id').drop_duplicates(subset='mgrs_tile_id', keep='last').reset_index(drop=True)
+df_dswx_s1_no_dups.shape
+
+# %%
+df_joined = gpd.sjoin(df_for_spatial_join, df_dswx_s1_no_dups, how='left', predicate='intersects')
+df_joined.drop(columns=['index_right'], inplace=True)
+print(df_joined.shape)
+df_joined.head()
+
+# %%
+print(df_joined.dswx_s1_urls.isna().sum())
+df_joined[df_joined.dswx_s1_urls.isna()].site_name.tolist()
+
+# %%
+df_all = df_joined.copy()
+
+# %%
+# duplicated_sites = df_all[df_all.duplicated(subset=['site_name'])].site_name.tolist()
+# df_all[df_all.site_name.isin(duplicate_sites)].to_dict('records')[2:4]
+
+# %% [markdown]
 # # Serialize the Validation Table in package data
 #
 # This allows us to use the table in the actual package.
@@ -233,7 +438,7 @@ if LOCALIZE_DATA:
 geojson_path = get_path_of_validation_geojson()
 
 # %%
-df.to_file(geojson_path, driver='GeoJSON')
+df_all.to_file(geojson_path, driver='GeoJSON')
 
 # %%
-df.to_csv(geojson_path.with_suffix('.csv'), index=False)
+df_all.to_csv(geojson_path.with_suffix('.csv'), index=False)
