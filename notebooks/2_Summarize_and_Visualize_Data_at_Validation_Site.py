@@ -39,6 +39,7 @@ import yaml
 # %% tags=["parameters"]
 site_name = '4_8'
 yaml_file = 'verification_parameters.yml'
+prod_index = 0
 
 # %% [markdown]
 # # Load Ids and Set up Directories
@@ -48,19 +49,23 @@ verif_params = VerificationParameters.from_yaml(yaml_file)
 verif_params
 
 # %%
-df_site_meta = get_validation_metadata_by_site_name(site_name)
+df_site_meta = get_validation_metadata_by_site_name(site_name, input_product=verif_params.input_product).iloc[prod_index: prod_index+1].reset_index(drop=True)
 df_site_meta
 
 # %%
 dswx_hls_id = df_site_meta['dswx_hls_id'][0]
+dswx_s1_id = df_site_meta['dswx_s1_id'][0]
 planet_id = df_site_meta['planet_id'][0]
+hls_id = df_site_meta['hls_id'][0]
 
 # %%
 all_data_dir = Path(verif_params.data_dir)
 assert all_data_dir.exists()
 
 # %%
-site_dir = all_data_dir / site_name
+prod_id = dswx_hls_id if verif_params.input_product == 'hls' else dswx_s1_id
+
+site_dir = all_data_dir / f'{site_name}--{prod_id}'
 assert site_dir.exists()
 
 # %% [markdown]
@@ -71,7 +76,7 @@ with open(yaml_file) as f:
     presentation_params = yaml.safe_load(f)['presentation_parameters']
 
 # %%
-presentation_dir =  Path(presentation_params['presentation_dir']) / site_name
+presentation_dir =  Path(presentation_params['presentation_dir']) / f'{site_name}--{prod_id}'
 presentation_dir.mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]

@@ -58,9 +58,10 @@ import json
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '4_8'
+site_name = '4_9'
 yaml_file = 'verification_parameters.yml'
 input_product = 's1'
+prod_index = 0
 
 # %% [markdown]
 # ## Load parameters
@@ -77,7 +78,7 @@ verif_params
 # We get the row of the validation table corresponding to our `site_name`.
 
 # %%
-df_site_meta = get_validation_metadata_by_site_name(site_name, input_product=input_product)
+df_site_meta = get_validation_metadata_by_site_name(site_name, input_product=input_product).iloc[prod_index: prod_index+1].reset_index(drop=True)
 df_site_meta
 
 # %% [markdown]
@@ -124,7 +125,7 @@ val_url
 
 # %%
 with rasterio.open(val_url) as ds:
-    X_val = ds.read(1)
+    X_val = X_val_original = ds.read(1)
     p_val = ds.profile
     val_bounds = list(ds.bounds)
 
@@ -188,6 +189,7 @@ X_dswx_c, p_dswx_c = read_raster_from_window(dswx_url,
                                              df_val_bounds.total_bounds,
                                              df_val_bounds.crs)
 X_dswx_c = X_dswx_c[0, ...]
+X_dswx_c_original = X_dswx_c.copy()
 
 # %%
 np.unique(X_dswx_c)
@@ -246,6 +248,12 @@ X_val_r, p_val_r = reclassify_validation_dataset_to_dswx_frame(X_val,
                                                                open_water_label=1,
                                                                minimum_nodata_percent_for_exclusion=.5)
 
+X_val_orig_r, p_val_r = reclassify_validation_dataset_to_dswx_frame(X_val_original,
+                                                                    p_val,
+                                                                    p_dswx_c_float,
+                                                                    open_water_label=1,
+                                                                    minimum_nodata_percent_for_exclusion=.5)
+
 # %% [markdown]
 # If we use non-HLS datasets, we are going to exclude partial surface water pixels.
 
@@ -302,14 +310,32 @@ plt.imshow(dswx_mask, interpolation='none')
 # # Sampling
 
 # %%
+X_dswx_c_original.shape
+
+# %%
+from scipy.ndimage import binary_dilation
+
+close_to_psw_mask_dswx = binary_dilation((X_dswx_c_original == 1).astype(int), iterations=1).astype(bool) & (X_dswx_c_original != 1)
+close_to_psw_mask_val = binary_dilation((X_val_orig_r == 2).astype(int), iterations=1).astype(bool) & ~(X_dswx_c_original == 1)
+
+valid_near_psw_mask = (close_to_psw_mask_dswx) & ~dswx_mask 
+plt.imshow(valid_near_psw_mask, interpolation='none')
+
+# %%
 y_val = X_val_r[~dswx_mask]
+y_val_sample = X_val_r[~dswx_mask]
+
+if input_product == 's1':
+    X_val_r_sample = X_val_r.copy()
+    X_val_r_sample[valid_near_psw_mask] = 2
+    y_val_sample = X_val_r_sample[~dswx_mask]
 y_dswx = X_dswx_c[~dswx_mask]
 
 # %% [markdown]
 # Based on the validation pixels, we target 1000 total pixels. Using this function, we see the total samples per class. If there aren't enough pixels in a given class, we only sample what is available (without replacement) so we will get less total pixels than what we target.
 
 # %%
-samples_per_label = get_equal_samples_per_label(y_val, [0, 1, 2], 1_000)
+samples_per_label = get_equal_samples_per_label(y_val_sample, [0, 1, 2], 1000)
 samples_per_label
 
 
@@ -330,8 +356,11 @@ labels = get_labels(input_product)
 labels
 
 # %%
-sample_indices = generate_random_indices_for_classes(y_val, 
-                                                     labels = labels,
+labels
+
+# %%
+sample_indices = generate_random_indices_for_classes(y_val_sample, 
+                                                     labels = [0, 1, 2],
                                                      total_target_sample_size=1_000,
                                                      n_trials=100)
 y_dswx_trails = [y_dswx[s] for s in sample_indices]
@@ -345,6 +374,12 @@ y_val_trials = [y_val[s] for s in sample_indices]
 # %%
 trial_id = 0
 samples = sample_indices[trial_id]
+
+# %%
+(y_val[samples] == 1).sum(), (y_val[samples] == 0).sum()
+
+# %%
+(y_dswx[samples] == 1).sum(), (y_dswx[samples] == 0).sum()
 
 # %% [markdown]
 # Want labels to start at 1.
@@ -483,3 +518,7 @@ json_data_f
 
 # %% editable=true slideshow={"slide_type": ""}
 json.dump(json_data_f, open(site_dir / 'trial_stats.json', 'w'), indent=2)
+
+# %%
+
+# %%

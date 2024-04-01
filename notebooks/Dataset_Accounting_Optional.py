@@ -13,6 +13,10 @@
 #     name: dswx_val
 # ---
 
+# %%
+# %load_ext autoreload
+# %autoreload 2
+
 # %% [markdown]
 # # Introduction
 # **Warning**: It is not recommended to run (let alone modify) this notebook - unless you really know what you are doing. This categorizes the metadata for validation and is kept only for provenance of how databases are archived and organized.
@@ -42,10 +46,13 @@ import geopandas as gpd
 import requests
 import concurrent.futures
 import shutil
+import pandas as pd
 
 import dswx_verification
 from dswx_verification import generate_linked_id_table_for_classified_imagery, get_path_of_validation_geojson
 from dswx_verification.val_db import get_localized_validation_table, get_classified_planet_table
+from dswx_verification.es_db import get_dswx_s1_docs_in_date_range, get_dswx_s1_doc
+from dswx_verification.es_db import get_rtc_doc
 
 # %% [markdown]
 # # Generate a new Validation Table using the Elastic Storage (ES) Database
@@ -64,9 +71,9 @@ print(df.shape)
 df.head()
 
 # %% [markdown]
-# # Localize Data
+# ## Localize Data for DSWx-HLS
 #
-# This step both:
+# Determining wheter This step both:
 #
 # 1. Localizes the data
 # 2. Includes the relative paths of the data into the table.
@@ -81,9 +88,9 @@ t = datetime.date.today()
 t
 
 # %%
-local_db_dir = Path(f'opera_dswx_val_db-{t.year}{t.month:02d}{t.day:02d}')
-local_db_dir.mkdir(exist_ok=True, parents=True)
-local_db_dir
+local_dswx_hls_db_dir = Path(f'opera_dswx_hls_val_db-{t.year}{t.month:02d}{t.day:02d}')
+local_dswx_hls_db_dir.mkdir(exist_ok=True, parents=True)
+local_dswx_hls_db_dir
 
 # %%
 df_planet = get_classified_planet_table()
@@ -116,7 +123,7 @@ def localize_dswx_data(df: gpd.GeoDataFrame,
     dswx_urls_by_site = df.dswx_hls_urls.tolist()
     dswx_urls_all = [url for url_group in dswx_urls_by_site for url in url_group.split(' ')]
     site_names = df.site_name.tolist()
-    out_dirs = [local_db_dir / site_name / 'dswx'  for (site_name, url_group) in zip(site_names, dswx_urls_by_site) 
+    out_dirs = [local_dswx_hls_db_dir / site_name / 'dswx'  for (site_name, url_group) in zip(site_names, dswx_urls_by_site) 
                                                    for url in url_group.split(' ')]
     if localize_data:
         [out_dir.mkdir(exist_ok=True, parents=True) for out_dir in out_dirs]
@@ -131,14 +138,15 @@ def localize_dswx_data(df: gpd.GeoDataFrame,
         out_paths = list(tqdm(executor.map(download_one_p, input_data), total=n, desc='dwsx_files'))
     return out_paths
 
-def localize_val_data(df: gpd.GeoDataFrame,
+def localize_val_data(df_val: gpd.GeoDataFrame,
                       max_workers=10,
-                      localize_data=LOCALIZE_DATA) -> list[str]:
-    val_urls = df.validation_dataset_url
-    site_names = df.site_name
-    planet_ids = df.planet_id
+                      localize_data=LOCALIZE_DATA,
+                      db_dir = local_dswx_hls_db_dir) -> list[str]:
+    val_urls = df_val.validation_dataset_url
+    site_names = df_val.site_name
+    planet_ids = df_val.planet_id
 
-    out_dirs = [local_db_dir / site_name for site_name in site_names]
+    out_dirs = [db_dir / site_name for site_name in site_names]
     if localize_data:
         [out_dir.mkdir(exist_ok=True, parents=True) for out_dir in out_dirs]
     out_file_names = [f'site_name-{sn}-classified_planet-{pid}.tif' for sn, pid in zip(site_names, 
@@ -146,7 +154,7 @@ def localize_val_data(df: gpd.GeoDataFrame,
 
     def download_one_p(data):
         url, out_dir, out_file_name = data
-        return download_one(url, out_dir, out_file_name=out_file_name) 
+        return download_one(url, out_dir, out_file_name=out_file_name, localize_data=localize_data) 
     input_data = list(zip(val_urls, out_dirs, out_file_names))
     n = len(input_data)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -171,10 +179,10 @@ def get_classification_metadata_and_notes(planet_id: str):
     metadata = df_planet[df_planet.image_name == planet_id].to_dict('records')[0]
     return metadata
 
-def serialize_metadata_for_classified_dataset(data: dict):
+def serialize_metadata_for_classified_dataset(data: dict, local_db=local_dswx_hls_db_dir ):
     site_name = data['site_name']
     planet_id = data['planet_id']
-    out_dir = local_db_dir / site_name
+    out_dir = local_db / site_name
     out_path = out_dir / f'Site-{site_name}-metadata.json'
     metadata = get_classification_metadata_and_notes(planet_id)
     # Shapely geometries need to be converted to strings
@@ -191,17 +199,17 @@ if LOCALIZE_DATA:
 # %% [markdown]
 # ## Update Table
 #
-# We are going to have the relative path to the `local_db_dir`.
+# We are going to have the relative path to the `local_dswx_hls_db_dir`.
 
 # %%
-N = len(dswx_paths_all) // 10
-dswx_paths_all_relative = list(map(lambda p: p.relative_to(local_db_dir), dswx_paths_all))
+N = len(dswx_paths_all) // 10 # there are 10 paths per DSWx-HLS product
+dswx_paths_all_relative = list(map(lambda p: p.relative_to(local_dswx_hls_db_dir), dswx_paths_all))
 dswx_paths_all_relative_str = list(map(str, dswx_paths_all_relative))
 dswx_paths_grouped = [' '.join(dswx_paths_all_relative_str[10 * n: 10 * (n+1)]) for n in range(N)]
 dswx_paths_grouped[0]
 
 # %%
-val_paths_relative = list(map(lambda p: p.relative_to(local_db_dir), val_paths))
+val_paths_relative = list(map(lambda p: p.relative_to(local_dswx_hls_db_dir), val_paths))
 
 # %%
 df['rel_local_val_path'] = list(map(str, val_paths_relative))
@@ -212,222 +220,198 @@ df.head()
 # Save the metadata table inside the local database too.
 
 # %%
-df.to_file(local_db_dir / 'validation_table.geojson', driver='GeoJSON')
-
-# %% [markdown]
-# We are going to save the `dswx_version` for provenance of the generated data.
-
-# %%
-with open(local_db_dir / 'software_version.txt', 'w') as f:
-    version=dswx_verification.__version__
-    f.write(f'dswx_verification version: {version}')
-
-# %%
 if LOCALIZE_DATA:
-    shutil.make_archive(local_db_dir, 'zip', local_db_dir)
+    # Save zip file
+    shutil.make_archive(local_dswx_hls_db_dir, 'zip', local_dswx_hls_db_dir)
 
-# %% [markdown]
-# # **WIP** DSWx-S1
-
-# %%
-import boto3
-s3client = boto3.client('s3')
-DSWx_S1_BUCKET_NAME = 'dswx-s1-adt-products'
-
-paginator = s3client.get_paginator('list_objects')
-
-# Specify additional parameters as needed
-page_iterator = paginator.paginate(Bucket=DSWx_S1_BUCKET_NAME)
-objs = []
-for pg in page_iterator:
-    if 'Contents' in pg:
-        objs += pg['Contents']
+    # Validation Table
+    df.to_file(local_dswx_hls_db_dir / 'validation_table.geojson', driver='GeoJSON')
     
-# resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME)
-# objs = resp['Contents']
-len(objs)
-
-
-# %%
-wtr_objs = [o for o in objs if o['Key'][-8:] == '_WTR.tif']
-wtr_objs[:3], len(wtr_objs)
+    # Software version write
+    with open(local_dswx_hls_db_dir / 'software_version.txt', 'w') as f:
+        version=dswx_verification.__version__
+        f.write(f'dswx_verification version: {version}')
 
 # %% [markdown]
-# There are some duplicates
+# # DSWx-S1 (**WIP**)
 
 # %%
-[wtr_obj for wtr_obj in wtr_objs if 'T47ULQ' in wtr_obj['Key']]
+df_hls = df.drop_duplicates(subset=['dswx_hls_id'], keep='first').reset_index(drop=True)
 
+# %%
+df_hls['mgrs_tile_id'] = df_hls.dswx_hls_id.map(lambda dswx_hls_id: dswx_hls_id.split('_')[3])
+df_hls['mgrs_tile_id'][:2]
+
+# %%
+df_hls['val_acq_time'] = df_hls.planet_id.map(lambda planet_id: pd.to_datetime(planet_id.split('_')[0]))
+df_hls['val_acq_time'][:2]
+
+
+# %%
+def get_dswx_s1_docs_from_row(row):
+    mgrs_tile = row['mgrs_tile_id']
+    val_acq_time = row['val_acq_time']
+    hits = get_dswx_s1_docs_in_date_range(mgrs_tile, val_acq_time)
+    return hits
+rows = [row for _, row in df_hls.iterrows()]
+#docs = [get_dswx_s1_docs(row) for row in tqdm(rows)]
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    docs = list(tqdm(executor.map(get_dswx_s1_docs_from_row, rows), total=len(rows)))
+docs[0][0]['id']
+
+# %%
+# Gets closest date to acq (not sure about coverage over val site yet)
+default_dict = {'id': '', 'metadata': {'product_urls': []}}
+docs_closest_date = [docs_[0] if docs_ else default_dict for docs_ in docs]
+
+# extract, sort, filter urls
+urls_lsts = [sorted(doc['metadata']['product_urls']) for doc in docs_closest_date]
+urls_lsts = [[url for url in url_lst if '.xml' not in url] for url_lst in urls_lsts]
+df_hls['dswx_s1_urls'] = [' '.join(urls_lst) for urls_lst in urls_lsts]
+# get id
+df_hls['dswx_s1_id'] = [doc['id'] for doc in docs_closest_date]
+df_suite = df_hls.copy()
+df_suite.head()
 
 # %% [markdown]
-# ## Get WTR urls
+# ## RTC Data
+#
+# Extract the data from the gdal tags.
 
 # %%
-def extract_url(wtr_obj: dict) -> str:
-    key = wtr_obj['Key']
-    return f'https://{DSWx_S1_BUCKET_NAME}.s3.us-west-2.amazonaws.com/{key}'
+import ast
 
-wtr_urls = list(map(extract_url, wtr_objs))
-wtr_urls[:2]
+def get_rtc_ids_from_one_prod(dswx_s1_url: str):
+    with rasterio.open(dswx_s1_url) as ds:
+        rtc_input_ids_str = ds.tags()['RTC_INPUT_LIST']
+    tifs = ast.literal_eval(rtc_input_ids_str)
+    ids = list(map(lambda tif_name: tif_name[:-7], tifs))
+    return ids
+
+
+url = df_hls['dswx_s1_urls'][0].split(' ')[0]
+rtc_ids = get_rtc_ids_from_one_prod(url)
+rtc_ids
+
 
 # %%
-len(wtr_urls)
+# %%time
+
+def rtc_id_extractor(url_lst_str: str) -> str:
+    if not url_lst_str:
+        return ''
+    url = url_lst_str.split(' ')[0]
+    rtc_ids = get_rtc_ids_from_one_prod(url)
+    return ' '.join(rtc_ids)
+dswx_s1_urls = df_suite.dswx_s1_urls.tolist()
+#df_suite['rtc_s1_ids'] = [rtc_id_extractor(url_lst) for url_lst in tqdm(dswx_s1_urls)]
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    rtc_ids_grouped_by_dswx_s1 = list(tqdm(executor.map(rtc_id_extractor, dswx_s1_urls), total=len(dswx_s1_urls)))
+rtc_ids_grouped_by_dswx_s1[0]
+
+df_suite['rtc_ids'] = rtc_ids_grouped_by_dswx_s1
+
+
+# %%
+def get_rtc_for_one_group(rtc_ids: str) -> list:
+    if not rtc_ids:
+        return []
+    rtc_docs = [get_rtc_doc(rtc_id) for rtc_id in rtc_ids.split(' ')]
+    return rtc_docs
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    rtc_docs_grouped_by_dswx_s1 = list(tqdm(executor.map(get_rtc_for_one_group, rtc_ids_grouped_by_dswx_s1), total=len(rtc_ids_grouped_by_dswx_s1)))
+rtc_docs_grouped_by_dswx_s1[0][0]['id']
+
+# %%
+rtc_data = [{doc['id']: doc['metadata']['product_urls'] for doc in doc_group} for doc_group in rtc_docs_grouped_by_dswx_s1]
+df_suite['rtc_url_dict'] = rtc_data
 
 # %% [markdown]
-# ## Get Extent Geometry 
+# ## Localize Data for DSWx-S1
 
 # %%
-from shapely.geometry import box, Polygon
-from rasterio.crs import CRS
-
-def get_extent_geo(url: str) -> tuple[Polygon, CRS]:
-    with rasterio.open(url) as ds:
-        extent = list(ds.bounds)
-        crs = ds.crs
-    return box(*extent), crs
-#extent_geos = list(map(get_extent_geo, tqdm(wtr_urls)))
-with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-    out = list(tqdm(executor.map(get_extent_geo, wtr_urls[:]), total=len(wtr_urls)))
+LOCALIZE_S1_DATA = True
 
 # %%
-extent_geos, crs_lst = zip(*out)
-
-# %%
-crs_lst[0]
-
-# %%
-extent_geos[0]
+local_dswx_s1_db_dir = Path(f'opera_dswx_s1_val_db-{t.year}{t.month:02d}{t.day:02d}')
+local_dswx_s1_db_dir.mkdir(exist_ok=True, parents=True)
+local_dswx_s1_db_dir
 
 # %% [markdown]
-# ## Reproject
+# ### Download DSWx-S1
 
 # %%
-import pyproj
-from shapely.ops import transform
-from itertools import starmap
+import requests
 
-crs_4326 = CRS.from_epsg(4326)
-
-def reproject_one_geo_to_4326(geo: Polygon, utm_crs: CRS) -> Polygon:
-    project = pyproj.Transformer.from_crs(utm_crs, crs_4326, always_xy=True).transform
-    return transform(project, geo)
-
-
-# %%
-extent_geos_4326 = list(starmap(reproject_one_geo_to_4326, zip(extent_geos, tqdm(crs_lst))))
-
-# %%
-extent_geos_4326[0]
-
-
-# %% [markdown]
-# ## Get all other URLs
-
-# %%
-def get_prefix(wtr_obj: dict) -> str:
-    key = wtr_obj['Key']
-
-    fn = key.split('/')[-1]
-    init_prefix = key[:-len(fn)]
+def download_one_file(url: str, out_path: str) -> str:
+    out_path = Path(out_path)
+    parent = out_path.parent
+    parent.mkdir(exist_ok=True, parents=True)
+    response = requests.get(url)
     
-    tokens = fn.split('_')
-    prefix = init_prefix + '_'.join(tokens[:6])
-    return prefix
-
-def get_all_urls(wtr_obj: dict) -> list:
-    prefix = get_prefix(wtr_obj)
-    resp = s3client.list_objects(Bucket=DSWx_S1_BUCKET_NAME, Prefix=prefix)
-    objs = resp['Contents']
-    objs_tifs = [o for o in objs if o['Key'][-4:] == '.tif']
-    return list(map(extract_url, objs_tifs))
-
-def get_urls_str(wtr_obj: dict) -> str:
-    urls_str = ' '.join(get_all_urls(wtr_obj))
-    return urls_str
+    if response.status_code == 200:
+        with open(out_path, 'wb') as file:
+            file.write(response.content)
+    else:
+        print(f"Failed to download file: {response.status_code}")
+    return out_path
 
 
-urls_str_lst = list(map(get_urls_str, tqdm(wtr_objs)))
-urls_str_lst[-1]
+# %%
+records = df_suite.to_dict('records')
 
+# modify two lines - just grouping/flattening same information
+dswx_s1_download_data = [(url, f"{local_dswx_s1_db_dir}/{r['site_name']}/{url.split('/')[-1]}") for r in records for url in r['dswx_s1_urls'].split(' ') if url]
+dswx_s1_relative_path_data_grouped = [[f"{r['site_name']}/{url.split('/')[-1]}" for url in r['dswx_s1_urls'].split(' ') if url] for r in records]
+dswx_s1_relative_path_str_data_grouped = [' '.join(group) for group in dswx_s1_relative_path_data_grouped]
+
+dswx_s1_download_data[0], len(dswx_s1_download_data)
+
+# %%
+dswx_s1_relative_path_str_data_grouped[0]
+
+# %%
+df_suite['rel_loc_dswx_s1_paths'] = dswx_s1_relative_path_str_data_grouped
+
+# %%
+if LOCALIZE_S1_DATA:
+    download_one_file_p = lambda data: download_one_file(*data)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        out_paths = list(tqdm(executor.map(download_one_file_p, dswx_s1_download_data), total=len(dswx_s1_download_data)))
+
+# %%
+dswx_s1_download_data = [(url, f"{local_dswx_s1_db_dir}/{r['site_name']}/{url.split('/')[-1]}") for r in records for url in r['dswx_s1_urls'].split(' ') if url]
 
 # %% [markdown]
-# ## Other Metadata
+# ### Download Source RTC Data
 
 # %%
-def get_tile_id(wtr_obj: dict) -> str:
-    key = wtr_obj['Key']
-    fn = key.split('/')[-1]
-    return fn.split('_')[3]
-
-def get_dswx_s1_id(wtr_obj: dict) -> str:
-    key = wtr_obj['Key']
-    fn = key.split('/')[-1].replace('_B01_WTR', '')
-    return fn[:-4]
-
+dswx_rtc_data = [(url, f"{local_dswx_s1_db_dir}/{r['site_name']}/rtc_data/{'/'.join(url.split('/')[-2:])}") for r in records for (rtc_id, urls) in r['rtc_url_dict'].items() if r['rtc_url_dict'] for url in urls]
+dswx_rtc_data[:2], len(dswx_rtc_data)
 
 # %%
-get_dswx_s1_id(wtr_objs[0])
-
-# %%
-mgrs_ids = list(map(get_tile_id, wtr_objs))
-dswx_s1_ids = list(map(get_dswx_s1_id, wtr_objs))
+if LOCALIZE_S1_DATA:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        out_paths_rtc = list(tqdm(executor.map(download_one_file_p, dswx_rtc_data), total=len(dswx_rtc_data)))
 
 # %% [markdown]
-# ## Get DSWx-S1 Dataframe
+# ### Download the Validation Data into the DSWx-S1 Directory
 
 # %%
-df_dswx_s1 = gpd.GeoDataFrame({'dswx_s1_id': dswx_s1_ids,
-                               'mgrs_tile_id': mgrs_ids,
-                               'dswx_s1_urls': urls_str_lst},
-                              geometry=extent_geos_4326,
-                              crs=crs_4326)
-df_dswx_s1 = df_dswx_s1.drop_duplicates(subset=['dswx_s1_id'])
-df_dswx_s1.shape
-
-# %%
-df_dswx_s1.to_file('dswx_s1_data.geojson', driver='GeoJSON')
-
-# %%
-df_dswx_s1.plot()
-
-# %%
-df_dswx_s1.shape
+if LOCALIZE_S1_DATA:
+    val_paths_dswx_s1 = localize_val_data(df_suite, localize_data=True, db_dir=local_dswx_s1_db_dir)
 
 # %% [markdown]
-# ## Prepare for Spatial Join
+# ### Download the notes on the Classified Validation into DSWx-S1 Data
 
 # %%
-cols_dswx_s1 = [col for col in df_dswx_s1.columns if col != 'geometry']
-df_for_spatial_join = df[[col for col in df.columns if col not in cols_dswx_s1 + ['rel_local_dswx_paths']]].reset_index(drop=True)
-print(df_for_spatial_join.shape)
-df_for_spatial_join.drop_duplicates(subset=['site_name'], keep='first', inplace=True)
-print(df_for_spatial_join.shape)
-
-
-# %% [markdown]
-# ##  Spatial join on Val Table
+records = df.to_dict('records')
+serialize_metadata_for_classified_dataset_s1 = lambda data: serialize_metadata_for_classified_dataset(data, local_db=local_dswx_s1_db_dir)
+if LOCALIZE_S1_DATA:
+    metadata_paths = list(map(serialize_metadata_for_classified_dataset_s1, tqdm(records)))
 
 # %%
-print(df_dswx_s1.shape)
-df_dswx_s1_no_dups = df_dswx_s1.sort_values(by='dswx_s1_id').drop_duplicates(subset='mgrs_tile_id', keep='last').reset_index(drop=True)
-df_dswx_s1_no_dups.shape
-
-# %%
-df_joined = gpd.sjoin(df_for_spatial_join, df_dswx_s1_no_dups, how='left', predicate='intersects')
-df_joined.drop(columns=['index_right'], inplace=True)
-print(df_joined.shape)
-df_joined.head()
-
-# %%
-print(df_joined.dswx_s1_urls.isna().sum())
-df_joined[df_joined.dswx_s1_urls.isna()].site_name.tolist()
-
-# %%
-df_all = df_joined.copy()
-
-# %%
-# duplicated_sites = df_all[df_all.duplicated(subset=['site_name'])].site_name.tolist()
-# df_all[df_all.site_name.isin(duplicate_sites)].to_dict('records')[2:4]
+df_suite.to_file(local_dswx_s1_db_dir / 'metadata.json')
 
 # %% [markdown]
 # # Serialize the Validation Table in package data
@@ -438,7 +422,7 @@ df_all = df_joined.copy()
 geojson_path = get_path_of_validation_geojson()
 
 # %%
-df_all.to_file(geojson_path, driver='GeoJSON')
+df_suite.to_file(geojson_path, driver='GeoJSON')
 
 # %%
-df_all.to_csv(geojson_path.with_suffix('.csv'), index=False)
+df_suite.to_csv(geojson_path.with_suffix('.csv'), index=False)

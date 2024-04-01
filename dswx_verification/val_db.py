@@ -6,7 +6,7 @@ import geopandas as gpd
 import pandas as pd
 from tqdm import tqdm
 
-from .es_db import get_DSWX_doc
+from .es_db import get_dswx_hls_doc
 
 os.environ["AWS_NO_SIGN_REQUEST"] = "YES"
 
@@ -101,7 +101,7 @@ def generate_linked_id_table_for_classified_imagery() -> gpd.GeoDataFrame:
     df_id = df_id.rename(columns={'image_name': 'planet_id',
                                   'collocated_dswx': 'hls_id'})
 
-    metadata_list = list(map(get_DSWX_doc, tqdm(df_id.hls_id, desc='Retreiving DSWx Metadata')))
+    metadata_list = list(map(get_dswx_hls_doc, tqdm(df_id.hls_id, desc='Retreiving DSWx Metadata')))
     df_id['dswx_hls_id'] = [item['id'] for item in metadata_list]
     product_urls_list = [item['metadata']['product_urls'] for item in metadata_list]
     df_id['dswx_hls_urls'] = [' '.join(urls) for urls in product_urls_list]
