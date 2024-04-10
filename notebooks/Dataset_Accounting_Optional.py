@@ -53,6 +53,7 @@ from dswx_verification import generate_linked_id_table_for_classified_imagery, g
 from dswx_verification.val_db import get_localized_validation_table, get_classified_planet_table
 from dswx_verification.es_db import get_dswx_s1_docs_in_date_range, get_dswx_s1_doc
 from dswx_verification.es_db import get_rtc_doc
+from dswx_verification.es_db import crop_raster_from_bounds
 
 # %% [markdown]
 # # Generate a new Validation Table using the Elastic Storage (ES) Database
@@ -243,6 +244,9 @@ df_hls['mgrs_tile_id'] = df_hls.dswx_hls_id.map(lambda dswx_hls_id: dswx_hls_id.
 df_hls['mgrs_tile_id'][:2]
 
 # %%
+df_hls.columns
+
+# %%
 df_hls['val_acq_time'] = df_hls.planet_id.map(lambda planet_id: pd.to_datetime(planet_id.split('_')[0]))
 df_hls['val_acq_time'][:2]
 
@@ -260,16 +264,36 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
 docs[0][0]['id']
 
 # %%
+docs[0][0]['metadata']['product_urls']
+
+
+# %%
+def calc_rel_spatial_coverage_of_subset(doc: dict, geo) -> float:
+    urls = sorted(doc['metadata']['product_urls'])
+    urls = [url for url in urls if '.tif' == url[-4:]]
+    url = urls[0]
+    try:
+        X, _ = crop_raster_from_bounds(url, geo.bounds)
+        val = (X != 255).sum() / X.size
+    except ValueError:
+        val = 0
+    return val
+
+
+# %%
+docs_spatially_filtered = [[doc for doc in doc_group if calc_rel_spatial_coverage_of_subset(doc, geo) > .9 ] for doc_group, geo in zip(tqdm(docs), (df_hls.geometry))]
+
+# %%
 # Gets closest date to acq (not sure about coverage over val site yet)
 default_dict = {'id': '', 'metadata': {'product_urls': []}}
-docs_closest_date = [docs_[0] if docs_ else default_dict for docs_ in docs]
+docs_best = [docs_[0] if docs_ else default_dict for docs_ in docs_filtered]
 
 # extract, sort, filter urls
-urls_lsts = [sorted(doc['metadata']['product_urls']) for doc in docs_closest_date]
+urls_lsts = [sorted(doc['metadata']['product_urls']) for doc in docs_best]
 urls_lsts = [[url for url in url_lst if '.xml' not in url] for url_lst in urls_lsts]
 df_hls['dswx_s1_urls'] = [' '.join(urls_lst) for urls_lst in urls_lsts]
 # get id
-df_hls['dswx_s1_id'] = [doc['id'] for doc in docs_closest_date]
+df_hls['dswx_s1_id'] = [doc['id'] for doc in docs_best]
 df_suite = df_hls.copy()
 df_suite.head()
 
@@ -330,7 +354,7 @@ df_suite['rtc_url_dict'] = rtc_data
 # ## Localize Data for DSWx-S1
 
 # %%
-LOCALIZE_S1_DATA = True
+LOCALIZE_S1_DATA = False
 
 # %%
 local_dswx_s1_db_dir = Path(f'opera_dswx_s1_val_db-{t.year}{t.month:02d}{t.day:02d}')
@@ -343,17 +367,17 @@ local_dswx_s1_db_dir
 # %%
 import requests
 
-def download_one_file(url: str, out_path: str) -> str:
+def download_one_file(url: str, out_path: str, localize_data=LOCALIZE_S1_DATA) -> str:
     out_path = Path(out_path)
     parent = out_path.parent
     parent.mkdir(exist_ok=True, parents=True)
     response = requests.get(url)
-    
-    if response.status_code == 200:
-        with open(out_path, 'wb') as file:
-            file.write(response.content)
-    else:
-        print(f"Failed to download file: {response.status_code}")
+    if localize_data:
+        if response.status_code == 200:
+            with open(out_path, 'wb') as file:
+                file.write(response.content)
+        else:
+            print(f"Failed to download file: {response.status_code}")
     return out_path
 
 
@@ -375,7 +399,7 @@ df_suite['rel_loc_dswx_s1_paths'] = dswx_s1_relative_path_str_data_grouped
 
 # %%
 if LOCALIZE_S1_DATA:
-    download_one_file_p = lambda data: download_one_file(*data)
+    download_one_file_p = lambda data: download_one_file(*data, localize_data=LOCALIZE_S1_DATA)
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         out_paths = list(tqdm(executor.map(download_one_file_p, dswx_s1_download_data), total=len(dswx_s1_download_data)))
 
@@ -425,4 +449,31 @@ geojson_path = get_path_of_validation_geojson()
 df_suite.to_file(geojson_path, driver='GeoJSON')
 
 # %%
-df_suite.to_csv(geojson_path.with_suffix('.csv'), index=False)
+df_site = df_suite[df_suite.site_name == '3_28'].reset_index(drop=True)
+df_site
+
+# %%
+import matplotlib.pyplot as plt
+from shapely.geometry import box
+from rasterio.crs import CRS
+
+fig, ax = plt.subplots()
+
+url = df_site.dswx_s1_urls[0].split(' ')[0]
+with rasterio.open(url) as ds:
+    bounds = ds.bounds
+    crs=ds.crs
+    X = ds.read()
+
+df_dswx = gpd.GeoDataFrame(geometry=[box(*bounds)], crs=crs).to_crs(CRS.from_epsg(4326))
+
+df_dswx.plot(ax=ax)
+df_site.plot(ax=ax, color='black')
+
+# %%
+X[0, ...]
+
+# %%
+plt.imshow(X[0, ...], cmap='tab20c')
+
+# %%

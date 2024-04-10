@@ -86,7 +86,9 @@ processed_data = list(map(read_trial_data_from_site, ids_processed))
 # %%
 df_all = pd.DataFrame(processed_data)
 columns = df_all.columns
-columns_begin = ['site_name', 'planet_id', 'dswx_hls_id', 'osw_requirement', 'psw_requirement']
+columns_begin = ['site_name', 'planet_id', 'dswx_hls_id', 'osw_requirement']
+if verif_params.input_product == 'hls':
+    columns_begin += ['psw_requirement']
 columns_end = [c for c in columns if c not in columns_begin]
 df_all = df_all[columns_begin + columns_end]
 df_all.head()
@@ -160,9 +162,6 @@ if verif_params.input_product == 'hls':
     n_pws_fails = (~df_proc.psw_requirement).sum()
     n_both_fail = (~df_proc.osw_requirement | ~df_proc.psw_requirement).sum()
     print(n_osw_fails, n_pws_fails, n_both_fail)
-
-# %%
-table_data_n_passes
 
 # %%
 table_data_n_passes = [{'Class': 'Open Surface Water (OSW)',

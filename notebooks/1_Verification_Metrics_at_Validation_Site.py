@@ -24,7 +24,7 @@
 #
 # This notebook is the core of the validation. It reads validation data and the provisional products, compares the two via random sampling of the classes, and then serializes this information. Although there are plots in this notebook, the visualization, aggregation, and formatting is done in subsequent notebooks.
 
-# %% editable=true slideshow={"slide_type": ""}
+# %%
 from dswx_verification import (get_validation_metadata_by_site_name, 
                                reclassify_validation_dataset_to_dswx_frame, 
                                resample_label_into_percentage,
@@ -51,6 +51,7 @@ import pandas as pd
 from pathlib import Path
 from shapely.geometry import box
 import json
+from scipy.ndimage import binary_dilation
 
 # %% [markdown]
 # # Parameters
@@ -58,10 +59,9 @@ import json
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '4_9'
+site_name = '4_28'
 yaml_file = 'verification_parameters.yml'
 input_product = 's1'
-prod_index = 0
 
 # %% [markdown]
 # ## Load parameters
@@ -78,7 +78,7 @@ verif_params
 # We get the row of the validation table corresponding to our `site_name`.
 
 # %%
-df_site_meta = get_validation_metadata_by_site_name(site_name, input_product=input_product).iloc[prod_index: prod_index+1].reset_index(drop=True)
+df_site_meta = get_validation_metadata_by_site_name(site_name, input_product=input_product).iloc[:1].reset_index(drop=True)
 df_site_meta
 
 # %% [markdown]
@@ -173,6 +173,7 @@ with rasterio.open(dswx_url) as ds:
     X_dswx = ds.read(1)
     p_dswx = ds.profile
     dswx_colormap = ds.colormap(1)
+p_dswx
 
 
 # %% [markdown]
@@ -257,11 +258,6 @@ X_val_orig_r, p_val_r = reclassify_validation_dataset_to_dswx_frame(X_val_origin
 # %% [markdown]
 # If we use non-HLS datasets, we are going to exclude partial surface water pixels.
 
-# %%
-if input_product != 'hls':
-    X_val_r[X_val_r == 2] = 255
-np.unique(X_val_r)
-
 # %% [markdown]
 # Again, we plot for interactivity. See subsequent notebooks for finalized plots with colorbars and axes.
 
@@ -297,6 +293,16 @@ size_mask_30m = get_contiguous_areas_of_class_with_maximum_size(X_val_r, [1, 2],
 plt.imshow(size_mask_30m, interpolation='none', vmax=1, vmin=0)
 
 # %% [markdown]
+# ## Removing Partial Water from Reprojection if not HLS
+#
+# This has to be done *after* size masking otherwise we will omit too much data from non-HLS inputs during size masking because the data
+
+# %%
+if input_product != 'hls':
+    X_val_r[X_val_r == 2] = 255
+np.unique(X_val_r)
+
+# %% [markdown]
 # ## DSWx Verification Mask
 #
 # We construct a new shared mask that excludes all pixels that are nodata in the validation or DSWx raster. We also exclude all pixels that are not NW, OSW, PSW (or labels `[0, 1, 2]`) in the DSWx.
@@ -304,35 +310,32 @@ plt.imshow(size_mask_30m, interpolation='none', vmax=1, vmin=0)
 # %%
 dswx_mask = (size_mask_30m) | (X_val_r == 255) | (~np.isin(X_dswx_c, [0, 1, 2]))
 
-plt.imshow(dswx_mask, interpolation='none')
+plt.imshow(dswx_mask, interpolation='none', vmin=0, vmax=1)
 
 # %% [markdown]
 # # Sampling
+#
+# Based on the validation pixels, we target 1000 total pixels. Using this function, we see the total samples per class. If there aren't enough pixels in a given class, we only sample what is available (without replacement) so we will get less total pixels than what we target.
+#
+# For sentinel-1 input (DSWx-S1), there are issues near the water body boundary and with false positives. Therefore, we artificially label PSW (label 2) those pixels that are within 1 pixel water *on* land according to DSWx data. This is what is plotted below. Then we sample from these areas as if they were PSW.
 
 # %%
-X_dswx_c_original.shape
-
-# %%
-from scipy.ndimage import binary_dilation
 
 close_to_psw_mask_dswx = binary_dilation((X_dswx_c_original == 1).astype(int), iterations=1).astype(bool) & (X_dswx_c_original != 1)
-close_to_psw_mask_val = binary_dilation((X_val_orig_r == 2).astype(int), iterations=1).astype(bool) & ~(X_dswx_c_original == 1)
+close_to_psw_mask_val = binary_dilation((X_val_orig_r == 2).astype(int), iterations=1).astype(bool) & (X_dswx_c_original != 1)
 
 valid_near_psw_mask = (close_to_psw_mask_dswx) & ~dswx_mask 
 plt.imshow(valid_near_psw_mask, interpolation='none')
 
 # %%
-y_val = X_val_r[~dswx_mask]
-y_val_sample = X_val_r[~dswx_mask]
+y_val = X_val_r[~dswx_mask].copy()
+y_val_sample = X_val_r[~dswx_mask].copy()
 
 if input_product == 's1':
     X_val_r_sample = X_val_r.copy()
     X_val_r_sample[valid_near_psw_mask] = 2
     y_val_sample = X_val_r_sample[~dswx_mask]
 y_dswx = X_dswx_c[~dswx_mask]
-
-# %% [markdown]
-# Based on the validation pixels, we target 1000 total pixels. Using this function, we see the total samples per class. If there aren't enough pixels in a given class, we only sample what is available (without replacement) so we will get less total pixels than what we target.
 
 # %%
 samples_per_label = get_equal_samples_per_label(y_val_sample, [0, 1, 2], 1000)
@@ -353,9 +356,6 @@ def get_labels(input_product):
             raise NotImplementedError('input_product must be s1 or hls')
 
 labels = get_labels(input_product)
-labels
-
-# %%
 labels
 
 # %%
@@ -518,7 +518,3 @@ json_data_f
 
 # %% editable=true slideshow={"slide_type": ""}
 json.dump(json_data_f, open(site_dir / 'trial_stats.json', 'w'), indent=2)
-
-# %%
-
-# %%

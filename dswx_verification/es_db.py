@@ -1,11 +1,16 @@
-from functools import lru_cache
 import warnings
+from functools import lru_cache
+from pathlib import Path
 
-import urllib3
 import pandas as pd
+import rasterio.mask
+from rasterio.warp import transform_bounds
+from rasterio.crs import CRS
+import urllib3
 from dotenv import dotenv_values
 from elasticsearch import Elasticsearch, client
 from elasticsearch_dsl import Q, Search
+from shapely.geometry import box
 
 urllib3.disable_warnings()
 INDICES = {"dswx_hls": "grq_*_hls-2023.09",
@@ -82,12 +87,31 @@ def get_dswx_s1_doc(mgrs_tile: str, dt: pd.Timestamp | str) -> dict:
     return hits
 
 
+def crop_raster_from_bounds(image_path: Path | str, bounds: list[float]) -> tuple:
+    """Bounds must be in lon/lat xmin, ymin, xmax, ymax (epsg:4326)"""
+
+    with rasterio.open(image_path) as src:
+        src_crs = src.crs
+        bounds_r = transform_bounds(CRS.from_epsg(4326), src_crs, *bounds)
+        geo = box(*bounds_r)
+        cropped_image, cropped_transform = rasterio.mask.mask(src, [geo], crop=True)
+        p = src.profile
+
+    p.update({"driver": "GTiff",
+              "height": cropped_image.shape[1],
+              "width": cropped_image.shape[2],
+              "transform": cropped_transform,
+              "compress": "lzw"})
+
+    return cropped_image, p
+
+
 def get_dswx_s1_docs_in_date_range(mgrs_tile: str, dt: pd.Timestamp | str, buffer_days=7) -> list[dict]:
     """Orders docs by proximity to provided datetime"""
     dt = pd.to_datetime(dt)
     dates = [dt + pd.Timedelta(days=n_days) for n_days in range(-buffer_days, buffer_days + 1)]
     doc_pairs = [(dt_, doc) for dt_ in dates for doc in get_dswx_s1_doc(mgrs_tile, dt_) if doc]
-    doc_pairs_ordered = sorted(doc_pairs, key=lambda pair: abs((pair[0] - dt).days))
+    doc_pairs_ordered = sorted(doc_pairs, key=lambda pair: abs((pair[0] - dt).seconds))
     docs = []
     if doc_pairs_ordered:
         _, docs = zip(*doc_pairs_ordered)
