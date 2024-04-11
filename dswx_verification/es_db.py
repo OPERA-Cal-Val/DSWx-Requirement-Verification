@@ -21,7 +21,7 @@ INDICES = {"dswx_hls": "grq_*_hls-2023.09",
 @lru_cache
 def get_es_search_client(prod="dswx_hls") -> client.Elasticsearch:
     if prod not in INDICES.keys():
-        raise ValueError(f'prod must be {', '.join(INDICES.keys())}')
+        raise ValueError(f'prod must be {", ".join(INDICES.keys())}')
     index = INDICES[prod]
 
     config = dotenv_values()
