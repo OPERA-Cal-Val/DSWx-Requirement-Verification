@@ -10,11 +10,10 @@ def test_notebook_integration(verify_all_script_path,
     notebook_dir = str(verify_all_script_path.parent / 'notebooks')
     sys.path.append(notebook_dir)
     from verify_all_dswx import main
-    breakpoint()
 
     runner = CliRunner()
     result = runner.invoke(main, ['--yaml_config', str(yaml_config_path),
-                                  '--output_notebooks_dir', None,
+                                  '--output_notebooks_dir', 'testing1234',
                                   '--sites', '3_10'])
     # This ensures we can more easily see output of CLI
     print(result.stdout)

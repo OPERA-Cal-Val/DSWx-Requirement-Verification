@@ -5,5 +5,6 @@ verification_parameters:
   data_dir: out/dswx_hls
   confidence_classes_to_strictly_include:  
   rel_dswx_db_dir_path: {{ DB }} 
+  input_product: 'hls'
 presentation_parameters:
   presentation_dir: presentation_material
