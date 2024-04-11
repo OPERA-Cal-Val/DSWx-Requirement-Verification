@@ -32,9 +32,10 @@ jobs:
           extra-specs: |
             python=${{ matrix.python-version }}
 
-      - name: Install kernel
+      - name: Install dswx_val and associated kernel
         shell: bash -l {0}
         run: |
+          python -m pip install .
           python -m ipykernel install --user --name dswx_val
       
       - name: Create Notebooks from Python Percent formatted Files
