@@ -7,9 +7,10 @@ def test_notebook_integration(verify_all_script_path,
                               yaml_config_path):
     # Add manually the verify all script to python path; would be more work to make an actual CLI and would defeat
     # interactivity thrust of this repository
-    repo_dir = str(verify_all_script_path.parent)
-    sys.path.append(repo_dir)
+    notebook_dir = str(verify_all_script_path.parent / 'notebooks')
+    sys.path.append(notebook_dir)
     from verify_all_dswx import main
+    breakpoint()
 
     runner = CliRunner()
     result = runner.invoke(main, ['--yaml_config', str(yaml_config_path),

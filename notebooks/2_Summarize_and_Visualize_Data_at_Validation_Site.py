@@ -194,7 +194,7 @@ for plot_type in ['without_mask', 'with_mask']:
     out = show(X_dswx_c, cmap=cmap, transform=p_dswx_c['transform'], interpolation='none', ax=ax[0], vmin=0,vmax=255)
     im_dswx = out.get_images()[0]
 
-    ax[0].set_title('DSWx-HLS (30 m)',fontsize=8)
+    ax[0].set_title(f'DSWx-{verif_params.input_product.upper()} (30 m)',fontsize=8)
     ax[0].set_xlabel('UTM easting (meters)',fontsize=fontSize)
     ax[0].set_ylabel('UTM northing (meters)',fontsize=fontSize)
     ax[0].ticklabel_format(axis='both', style='scientific',scilimits=(0,0),useOffset=False,useMathText=True)
