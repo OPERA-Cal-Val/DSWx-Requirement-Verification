@@ -59,7 +59,7 @@ from scipy.ndimage import binary_dilation
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '3_10'
+site_name = '4_9'
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]
@@ -323,10 +323,15 @@ plt.imshow(dswx_mask, interpolation='none', vmin=0, vmax=1)
 
 # %%
 #close_to_psw_mask_dswx = binary_dilation((X_dswx_c_original == 1).astype(int), iterations=1).astype(bool) & (X_dswx_c_original != 1)
+
+# Catching false positives (i.e. false water)
 close_to_psw_mask_dswx = binary_dilation((X_dswx_c_original == 1).astype(int), iterations=1).astype(bool) & (X_val_orig_r != 1)
+
+# Catching false negatives due to eroded water bodies
 close_to_psw_mask_val = binary_dilation((X_val_orig_r == 2).astype(int), iterations=1).astype(bool) & (X_val_orig_r != 1)
 
-valid_near_psw_mask = (close_to_psw_mask_dswx | close_to_psw_mask_val) & ~dswx_mask 
+
+valid_near_psw_mask = (close_to_psw_mask_dswx) & ~dswx_mask 
 plt.imshow(valid_near_psw_mask, interpolation='none')
 
 # %%

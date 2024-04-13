@@ -20,7 +20,7 @@ SITE_NOTEBOOKS_RELATIVE_PATHS = [repo_dir / 'notebooks/1_Verification_Metrics_at
               default=None,
               type=str,
               required=False,
-              help='Where output notebooks will be saved')
+              help='Where output notebooks will be saved; defaults to "out_notebooks"')
 @click.option('--sites',
               default=None,
               type=str,
