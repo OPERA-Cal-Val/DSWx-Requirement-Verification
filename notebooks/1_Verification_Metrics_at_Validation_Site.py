@@ -59,7 +59,7 @@ from scipy.ndimage import binary_dilation
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '4_9'
+site_name = '4_28'
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]
@@ -322,16 +322,13 @@ plt.imshow(dswx_mask, interpolation='none', vmin=0, vmax=1)
 # For sentinel-1 input (DSWx-S1), there are issues near the water body boundary and with false positives. Therefore, we artificially label PSW (label 2) those pixels that are within 1 pixel water *on* land according to DSWx data. This is what is plotted below. Then we sample from these areas as if they were PSW.
 
 # %%
-#close_to_psw_mask_dswx = binary_dilation((X_dswx_c_original == 1).astype(int), iterations=1).astype(bool) & (X_dswx_c_original != 1)
-
 # Catching false positives (i.e. false water)
 close_to_psw_mask_dswx = binary_dilation((X_dswx_c_original == 1).astype(int), iterations=1).astype(bool) & (X_val_orig_r != 1)
 
 # Catching false negatives due to eroded water bodies
-close_to_psw_mask_val = binary_dilation((X_val_orig_r == 2).astype(int), iterations=1).astype(bool) & (X_val_orig_r != 1)
+close_to_psw_mask_val = binary_dilation((X_val_orig_r == 1).astype(int), iterations=1).astype(bool) & (X_val_orig_r != 1)
 
-
-valid_near_psw_mask = (close_to_psw_mask_dswx) & ~dswx_mask 
+valid_near_psw_mask = (close_to_psw_mask_dswx | close_to_psw_mask_val) & ~dswx_mask 
 plt.imshow(valid_near_psw_mask, interpolation='none')
 
 # %%
