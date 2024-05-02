@@ -1,6 +1,6 @@
 # DSWx-Requirement-Verification
 
-This respository contains the workflow used to verify the DSWx suite. It is currently focused on DSWx-HLS, but will be updated along with the subsequent releases of DSWx products.
+This respository contains the workflow used to verify the DSWx suite. The DSWx-HLS (which has already gone through formal validation review) is presented. So, is DSWx-S1 which whose formal validation is ongoing.
 
 # Background
 
@@ -53,7 +53,9 @@ The validation database consists of:
 + Independently generated 3 meter classified Planet Imagery - specifically classified into water and not water classes.
 + Coincident provisional DSWx products (these products are historical and not a part of the official DSWx catalog)
 
-These are included in a zipped up file hosted at the PODAAC. The CMR page for the validation database can be found here: https://podaac.jpl.nasa.gov/dataset/OPERA_L3_DSWX-HLS_PROVISIONAL_V0. A permalink for the data itself is `https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/OPERA_DSWX-HLS_CALVAL_PROVISIONAL_V1/opera-calval-database-dswx.zip`. We recommend using `wget` and `~/.netrc` with Earthdata credentials. Specifically, in your `~/.netrc` put your earthdata credentials as:
+### DSWx-HLS
+
+For `DSWx-HLS`, the datasets are included in a zipped up file hosted at the PODAAC. The CMR page for the validation database can be found here: https://podaac.jpl.nasa.gov/dataset/OPERA_L3_DSWX-HLS_PROVISIONAL_V0. A permalink for the data itself is `https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/OPERA_DSWX-HLS_CALVAL_PROVISIONAL_V1/opera-calval-database-dswx.zip`. We recommend using `wget` and `~/.netrc` with Earthdata credentials. Specifically, in your `~/.netrc` put your earthdata credentials as:
 
 ```
 machine urs.earthdata.nasa.gov
@@ -75,6 +77,10 @@ unzip opera-calval-database-dswx.zip # unzips to directory called DB/
 
 Use QGIS to inspect the contents of directory called `DB`. **Note**: if you rename or move this directory - make sure to put the *relative path* of this directory in the `verifications_parameters.yml` (relative to either the notebooks or the script being run). The data can also be downloaded directly from earthdata search [here](https://search.earthdata.nasa.gov/search/granules?p=C2603501575-POCLOUD&pg[0][v]=f&pg[0][gsk]=-start_date&q=dswx&tl=1701297419!3!!).
 
+### DSWx-S1
+
+Forthecoming.
+
 ## 1. Individual Notebooks over a given Validation Site
 
 Each site can be explored through [notebooks/1_Verification_Metrics_at_Validation_Site.py](notebooks/1_Verification_Metrics_at_Validation_Site.py). Specifically, there will be cell where the `site_name` can be specified (these `site_names` can be found [here](https://github.com/OPERA-Cal-Val/DSWx-Requirement-Verification/blob/dev/dswx_verification/data/validation_table.csv)) The `notebooks/*.py` files should be viewable in a jupyterlab as a notebook (this is the precise point of jupytext). Make sure to use the correct environment set up above. When saving the notebook, the file will update `*.py` file automatically.
@@ -91,9 +97,9 @@ As above, we need the correct environment (i.e. `dwx_val` dictated by the `envir
 Navigate to the `notebooks` directory in this repository.
 
 1. `jupytext --set-formats ipynb,py:percent *.py` (generates the corresponding notebook from the percent formatted file)
-2. Run `python ../verify_all_dswx.py --yaml_config verification_parameters.yml`
+2. Run `python verify_all_dswx.py --yaml_config verification_parameters.yml`
 
-Adjust the parameters within the yaml file as required. This will create `*.tex` files that can be compiled into a slide deck.
+Adjust the parameters within the yaml file as required. Running the above will create `*.tex` files that can be compiled into a slide deck. Note you can now toggle between `DSWx-S1` and `DSWx-HLS`
 
 ### B. Generating Beamer slides (Optional)
 

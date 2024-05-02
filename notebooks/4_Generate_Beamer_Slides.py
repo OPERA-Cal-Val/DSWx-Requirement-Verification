@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -20,7 +20,7 @@
 # %% [markdown]
 # I wanted to use jinja as [here](https://github.com/mondeja/latex-ji18n) and [here](https://tug.org/tug2019/slides/slides-ziegenhagen-python.pdf), but ended up using simple replace as I was having trouble figuring out the `jinja2.Environment` piece.
 
-# %%
+# %% editable=true slideshow={"slide_type": ""}
 import yaml
 from pathlib import Path
 from dswx_verification import get_main_beamer_tex_template, render_latex_template, get_slide_tex_template
@@ -29,13 +29,13 @@ import jinja2
 # %% [markdown]
 # # Parameters
 
-# %%
+# %% editable=true slideshow={"slide_type": ""} tags=["parameters"]
 yaml_file = 'verification_parameters.yml'
 
-# %% [markdown]
+# %% [markdown] editable=true slideshow={"slide_type": ""}
 # # Load Parameters
 
-# %%
+# %% editable=true slideshow={"slide_type": ""}
 with open(yaml_file) as f:
     presentation_params = yaml.safe_load(f)['presentation_parameters']
 
@@ -82,6 +82,7 @@ def get_site_dirs_for_presentation(data_dir: str | Path) -> list:
 
 # %%
 site_dirs = get_site_dirs_for_presentation(presentation_dir)
+site_dirs
 
 # %%
 slides_list = list(map(generate_one_slide, site_dirs))

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -59,26 +59,26 @@ def get_site_ids_processed(data_dir: str | Path) -> list:
     # Remove files
     dswx_verification_paths = list(filter(lambda path: path.is_dir(), dswx_verification_paths))
     # Get ids
-    site_names_processed = [path.name for path in dswx_verification_paths]
+    ids_processed = [path.name for path in dswx_verification_paths]
     # Remove mac paths
-    site_names_processed = list(filter(lambda path: '.' != path[0], site_names_processed))
+    site_names_processed = list(filter(lambda path: '.' != path[0], ids_processed))
     return site_names_processed
 
 
 
 # %%
-sites_processed = get_site_ids_processed(verif_params.data_dir)
-sites_processed[:3]
+ids_processed = get_site_ids_processed(verif_params.data_dir)
+ids_processed[:3]
 
 
 # %%
-def read_trial_data_from_site(site_name):
+def read_trial_data_from_site(id_dir_name):
     data_dir = Path(verif_params.data_dir)
-    json_path = data_dir / site_name / 'trial_stats.json'
+    json_path = data_dir / id_dir_name / 'trial_stats.json'
     data = json.load(open(json_path))
     return data
 
-processed_data = list(map(read_trial_data_from_site, sites_processed))
+processed_data = list(map(read_trial_data_from_site, ids_processed))
 
 # %% [markdown]
 # # Record a CSV
@@ -86,7 +86,9 @@ processed_data = list(map(read_trial_data_from_site, sites_processed))
 # %%
 df_all = pd.DataFrame(processed_data)
 columns = df_all.columns
-columns_begin = ['site_name', 'planet_id', 'dswx_hls_id', 'osw_requirement', 'psw_requirement']
+columns_begin = ['site_name', 'planet_id', 'dswx_hls_id', 'osw_requirement']
+if verif_params.input_product == 'hls':
+    columns_begin += ['psw_requirement']
 columns_end = [c for c in columns if c not in columns_begin]
 df_all = df_all[columns_begin + columns_end]
 df_all.head()
@@ -147,26 +149,34 @@ df_proc.head()
 
 # %%
 n_osw_passes = df_proc.osw_requirement.sum()
-n_pws_passes = df_proc.psw_requirement.sum()
-n_both_pass = (df_proc.osw_requirement & df_proc.psw_requirement).sum()
-n_pws_passes, n_osw_passes, n_both_pass
+print('OSW passes:', n_osw_passes)
+if verif_params.input_product == 'hls':
+    n_pws_passes = df_proc.psw_requirement.sum()
+    n_both_pass = (df_proc.osw_requirement & df_proc.psw_requirement).sum()
+    print(n_pws_passes, n_both_pass)
 
 # %%
 n_osw_fails = (~df_proc.osw_requirement).sum()
-n_pws_fails = (~df_proc.psw_requirement).sum()
-n_both_fail = (~df_proc.osw_requirement | ~df_proc.psw_requirement).sum()
-n_osw_fails, n_pws_fails, n_both_fail
+print('OSW Failures:', n_osw_fails)
+if verif_params.input_product == 'hls':
+    n_pws_fails = (~df_proc.psw_requirement).sum()
+    n_both_fail = (~df_proc.osw_requirement | ~df_proc.psw_requirement).sum()
+    print(n_osw_fails, n_pws_fails, n_both_fail)
 
 # %%
-df_passes = pd.DataFrame([{'Class': 'Open Surface Water (OSW)',
+table_data_n_passes = [{'Class': 'Open Surface Water (OSW)',
                           'Pass': n_osw_passes,
-                          'Not Pass': n_osw_fails},
-                         {'Class': 'Partial Surface Water (PSW)',
+                          'Not Pass': n_osw_fails}]
+if verif_params.input_product == 'hls':
+    table_data_n_passes.append({'Class': 'Partial Surface Water (PSW)',
                           'Pass': n_pws_passes,
-                          'Not Pass': n_pws_fails},
-                         {'Class': 'Both (OSW + PSW)',
+                          'Not Pass': n_pws_fails})
+    table_data_n_passes.append({'Class': 'Both (OSW + PSW)',
                           'Pass': n_both_pass,
-                          'Not Pass': n_both_fail}])
+                          'Not Pass': n_both_fail})
+
+# %%
+df_passes = pd.DataFrame(table_data_n_passes)
 df_passes = df_passes.set_index('Class')
 df_passes
 

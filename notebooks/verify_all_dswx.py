@@ -6,7 +6,7 @@ from dswx_verification import get_localized_validation_table
 from tqdm import tqdm
 
 
-repo_dir = Path(__file__).parent.resolve()
+repo_dir = Path(__file__).parent.resolve().parent
 SITE_NOTEBOOKS_RELATIVE_PATHS = [repo_dir / 'notebooks/1_Verification_Metrics_at_Validation_Site.ipynb',
                                  repo_dir / 'notebooks/2_Summarize_and_Visualize_Data_at_Validation_Site.ipynb',
                                  ]
@@ -20,7 +20,7 @@ SITE_NOTEBOOKS_RELATIVE_PATHS = [repo_dir / 'notebooks/1_Verification_Metrics_at
               default=None,
               type=str,
               required=False,
-              help='Where output notebooks will be saved')
+              help='Where output notebooks will be saved; defaults to "out_notebooks"')
 @click.option('--sites',
               default=None,
               type=str,

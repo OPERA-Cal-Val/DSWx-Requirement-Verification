@@ -2,8 +2,9 @@ verification_parameters:
   pixels_sampled_per_trial: 1000
   pixels_distributed_with_respect_to_val: True
   number_of_trials: 100
-  data_dir: out/dswx_hls
+  data_dir: out/latest
+  input_product: s1
   confidence_classes_to_strictly_include:
-  rel_dswx_db_dir_path: ../DB
+  rel_dswx_db_dir_path: 
 presentation_parameters:
   presentation_dir: presentation_material

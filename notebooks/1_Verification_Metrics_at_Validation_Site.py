@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.15.2
+#       jupytext_version: 1.16.1
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -24,7 +24,7 @@
 #
 # This notebook is the core of the validation. It reads validation data and the provisional products, compares the two via random sampling of the classes, and then serializes this information. Although there are plots in this notebook, the visualization, aggregation, and formatting is done in subsequent notebooks.
 
-# %% editable=true slideshow={"slide_type": ""}
+# %%
 from dswx_verification import (get_validation_metadata_by_site_name, 
                                reclassify_validation_dataset_to_dswx_frame, 
                                resample_label_into_percentage,
@@ -51,6 +51,7 @@ import pandas as pd
 from pathlib import Path
 from shapely.geometry import box
 import json
+from scipy.ndimage import binary_dilation
 
 # %% [markdown]
 # # Parameters
@@ -58,7 +59,7 @@ import json
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '3_10'
+site_name = '4_28'
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]
@@ -70,13 +71,16 @@ yaml_file = 'verification_parameters.yml'
 verif_params = VerificationParameters.from_yaml(yaml_file)
 verif_params
 
+# %%
+input_product = verif_params.input_product
+
 # %% [markdown]
 # # Dataset IDs
 #
 # We get the row of the validation table corresponding to our `site_name`.
 
 # %%
-df_site_meta = get_validation_metadata_by_site_name(site_name)
+df_site_meta = get_validation_metadata_by_site_name(site_name, input_product=input_product).iloc[:1].reset_index(drop=True)
 df_site_meta
 
 # %% [markdown]
@@ -84,6 +88,7 @@ df_site_meta
 
 # %%
 dswx_hls_id = df_site_meta['dswx_hls_id'][0]
+dswx_s1_id = df_site_meta['dswx_s1_id'][0]
 planet_id = df_site_meta['planet_id'][0]
 hls_id = df_site_meta['hls_id'][0]
 
@@ -97,7 +102,8 @@ all_data_dir = Path(verif_params.data_dir)
 all_data_dir.mkdir(exist_ok=True, parents=True)
 
 # %%
-site_dir = all_data_dir / site_name
+prod_id = dswx_hls_id if verif_params.input_product == 'hls' else dswx_s1_id
+site_dir = all_data_dir / f'{site_name}--{prod_id}'
 site_dir.mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
@@ -121,27 +127,55 @@ val_url
 
 # %%
 with rasterio.open(val_url) as ds:
-    X_val = ds.read(1)
+    X_val = X_val_original = ds.read(1)
     p_val = ds.profile
     val_bounds = list(ds.bounds)
+
 
 # %% [markdown]
 # ## DSWx
 #
+# Set up keys
+
+# %%
+def get_url_key(input_product):
+    match input_product:
+        case 'hls':
+            return 'dswx_hls_urls'
+        case 's1':
+            return 'dswx_s1_urls'
+
+url_key = get_url_key(input_product)
+
+
+# %%
+def get_loc_path_key(input_product):
+    match input_product:
+        case 'hls':
+            return 'rel_local_dswx_hls_paths'
+        case 's1':
+            return 'rel_local_dswx_s1_paths'
+
+rel_path_key = get_loc_path_key(input_product)
+
+# %%
+rel_path_key, url_key
+
+# %% [markdown]
 # Again, if the local database path is found in the YML, use it.
 
 # %%
-dswx_url = df_site_meta['dswx_hls_urls'][0].split(' ')[0]
+dswx_url = df_site_meta[url_key][0].split(' ')[0]
 if verif_params.rel_dswx_db_dir_path is not None:
-    dswx_url = verif_params.rel_dswx_db_dir_path / df_site_meta['rel_local_dswx_paths'][0].split(' ')[0]
+    dswx_url = verif_params.rel_dswx_db_dir_path / df_site_meta[rel_path_key][0].split(' ')[0]
 dswx_url
 
 # %%
-
 with rasterio.open(dswx_url) as ds:
     X_dswx = ds.read(1)
     p_dswx = ds.profile
     dswx_colormap = ds.colormap(1)
+p_dswx
 
 
 # %% [markdown]
@@ -158,6 +192,10 @@ X_dswx_c, p_dswx_c = read_raster_from_window(dswx_url,
                                              df_val_bounds.total_bounds,
                                              df_val_bounds.crs)
 X_dswx_c = X_dswx_c[0, ...]
+X_dswx_c_original = X_dswx_c.copy()
+
+# %%
+np.unique(X_dswx_c)
 
 # %% [markdown]
 # ## Sample Plot
@@ -213,6 +251,15 @@ X_val_r, p_val_r = reclassify_validation_dataset_to_dswx_frame(X_val,
                                                                open_water_label=1,
                                                                minimum_nodata_percent_for_exclusion=.5)
 
+X_val_orig_r, p_val_r = reclassify_validation_dataset_to_dswx_frame(X_val_original,
+                                                                    p_val,
+                                                                    p_dswx_c_float,
+                                                                    open_water_label=1,
+                                                                    minimum_nodata_percent_for_exclusion=.5)
+
+# %% [markdown]
+# If we use non-HLS datasets, we are going to exclude partial surface water pixels.
+
 # %% [markdown]
 # Again, we plot for interactivity. See subsequent notebooks for finalized plots with colorbars and axes.
 
@@ -248,6 +295,16 @@ size_mask_30m = get_contiguous_areas_of_class_with_maximum_size(X_val_r, [1, 2],
 plt.imshow(size_mask_30m, interpolation='none', vmax=1, vmin=0)
 
 # %% [markdown]
+# ## Removing Partial Water from Reprojection if not HLS
+#
+# This has to be done *after* size masking otherwise we will omit too much data from non-HLS inputs during size masking because the data
+
+# %%
+if input_product != 'hls':
+    X_val_r[X_val_r == 2] = 255
+np.unique(X_val_r)
+
+# %% [markdown]
 # ## DSWx Verification Mask
 #
 # We construct a new shared mask that excludes all pixels that are nodata in the validation or DSWx raster. We also exclude all pixels that are not NW, OSW, PSW (or labels `[0, 1, 2]`) in the DSWx.
@@ -255,27 +312,58 @@ plt.imshow(size_mask_30m, interpolation='none', vmax=1, vmin=0)
 # %%
 dswx_mask = (size_mask_30m) | (X_val_r == 255) | (~np.isin(X_dswx_c, [0, 1, 2]))
 
-plt.imshow(dswx_mask, interpolation='none')
+plt.imshow(dswx_mask, interpolation='none', vmin=0, vmax=1)
 
 # %% [markdown]
 # # Sampling
+#
+# Based on the validation pixels, we target 1000 total pixels. Using this function, we see the total samples per class. If there aren't enough pixels in a given class, we only sample what is available (without replacement) so we will get less total pixels than what we target.
+#
+# For sentinel-1 input (DSWx-S1), there are issues near the water body boundary and with false positives. Therefore, we artificially label PSW (label 2) those pixels that are within 1 pixel water *on* land according to DSWx data. This is what is plotted below. Then we sample from these areas as if they were PSW.
 
 # %%
-y_val = X_val_r[~dswx_mask]
+# Catching false positives (i.e. false water)
+close_to_psw_mask_dswx = binary_dilation((X_dswx_c_original == 1).astype(int), iterations=1).astype(bool) & (X_val_orig_r != 1)
+
+# Catching false negatives due to eroded water bodies
+close_to_psw_mask_val = binary_dilation((X_val_orig_r == 1).astype(int), iterations=1).astype(bool) & (X_val_orig_r != 1)
+
+valid_near_psw_mask = (close_to_psw_mask_dswx | close_to_psw_mask_val) & ~dswx_mask 
+plt.imshow(valid_near_psw_mask, interpolation='none')
+
+# %%
+y_val = X_val_r[~dswx_mask].copy()
+y_val_sample = X_val_r[~dswx_mask].copy()
+
+if input_product == 's1':
+    X_val_r_sample = X_val_r.copy()
+    X_val_r_sample[valid_near_psw_mask] = 2
+    y_val_sample = X_val_r_sample[~dswx_mask]
 y_dswx = X_dswx_c[~dswx_mask]
 
-# %% [markdown]
-# Based on the validation pixels, we target 1000 total pixels. Using this function, we see the total samples per class. If there aren't enough pixels in a given class, we only sample what is available (without replacement) so we will get less total pixels than what we target.
-
 # %%
-samples_per_label = get_equal_samples_per_label(y_val, [0, 1, 2], 1_000)
+samples_per_label = get_equal_samples_per_label(y_val_sample, [0, 1, 2], 1000)
 samples_per_label
+
 
 # %% [markdown]
 # This routine gives us the flattened indices of equal samples from each label with specified number of trials (in this case, this is 1,000).
 
 # %%
-sample_indices = generate_random_indices_for_classes(y_val, 
+def get_labels(input_product):
+    match input_product:
+        case 'hls':
+            return [0, 1, 2]
+        case 's1':
+            return [0, 1]
+        case _:
+            raise NotImplementedError('input_product must be s1 or hls')
+
+labels = get_labels(input_product)
+labels
+
+# %%
+sample_indices = generate_random_indices_for_classes(y_val_sample, 
                                                      labels = [0, 1, 2],
                                                      total_target_sample_size=1_000,
                                                      n_trials=100)
@@ -290,6 +378,12 @@ y_val_trials = [y_val[s] for s in sample_indices]
 # %%
 trial_id = 0
 samples = sample_indices[trial_id]
+
+# %%
+(y_val[samples] == 1).sum(), (y_val[samples] == 0).sum()
+
+# %%
+(y_dswx[samples] == 1).sum(), (y_dswx[samples] == 0).sum()
 
 # %% [markdown]
 # Want labels to start at 1.
@@ -380,13 +474,12 @@ mu_psw = df_trials_agg[psw_mean_acc_key].values[0]
 
 osw_req_passed = (mu_osw > OSW_ACCURACY_REQ)
 df_trials_agg['osw_requirement'] = osw_req_passed
-
-psw_req_passed = (mu_psw > PSW_ACCURACY_REQ)
-df_trials_agg['psw_requirement'] = psw_req_passed
-
-# %%
 print(f"OSW Requirement Passing: {osw_req_passed} (Acc: {(mu_osw * 100):1.2f}%)")
-print(f"PSW Requirement Passing: {psw_req_passed} (Acc: {(mu_psw * 100):1.2f}%)")
+
+if input_product == 'hls':
+    psw_req_passed = (mu_psw > PSW_ACCURACY_REQ)
+    df_trials_agg['psw_requirement'] = psw_req_passed
+    print(f"PSW Requirement Passing: {psw_req_passed} (Acc: {(mu_psw * 100):1.2f}%)")
 
 # %% [markdown]
 # # Serialize
@@ -421,5 +514,11 @@ paths
 # %%
 json_data = df_trials_agg.to_dict('records')[0]
 
+# %%
+json_data_f = json_data
+if input_product != 'hls':
+    json_data_f = {k:v for (k, v) in json_data.items() if 'Partial_Surface_Water' not in k}
+json_data_f
+
 # %% editable=true slideshow={"slide_type": ""}
-json.dump(json_data, open(site_dir / 'trial_stats.json', 'w'), indent=2)
+json.dump(json_data_f, open(site_dir / 'trial_stats.json', 'w'), indent=2)
