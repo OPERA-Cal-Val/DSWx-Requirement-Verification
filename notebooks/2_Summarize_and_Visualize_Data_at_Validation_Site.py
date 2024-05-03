@@ -37,7 +37,7 @@ import yaml
 # # Parameters
 
 # %% tags=["parameters"]
-site_name = '4_8'
+site_name = '1_41'
 yaml_file = 'verification_parameters.yml'
 prod_index = 0
 
@@ -158,26 +158,34 @@ ax[2].yaxis.get_offset_text().set_fontsize(fontSize)
 ax[2].xaxis.get_offset_text().set_fontsize(fontSize)
 
 im = dswx_im_data.get_images()[0]
-bounds =  [0, 1, 2, 3, 
-           251, 252, 253, #254
-          ]
+if verif_params.input_product == 's1':
+        bounds =  [0, 1, 2,  4, 249, 250, 251]
+        ticks = [0.5, 1.5, 3, 249.5, 250.5]
+        tick_labels = ['Not Water', 
+                      'Open Water',
+                      'Inundated Vegetation',
+                      'HAND Mask',
+                      'Layover Mask'
+                     ]
+elif verif_params.input_product == 'hls':
+    bounds =  [0, 1, 2, 3, 251, 252, 253]
+    ticks=[0.5, 1.5, 2.5, 251.5, 252.5]
+    tick_labels = ['Not Water', 
+                 'Open Water',
+                 'Partial Surface Water',
+                 'HLS Snow/Ice',
+                 'HLS Cloud/Cloud Shadow']
 cbar=fig.colorbar(im, 
                   ax=ax, 
                   shrink=0.5, 
                   pad=0.05, 
                   boundaries=bounds, 
                   cmap=cmap, 
-                  ticks=[0.5, 1.5, 2.5, 251.5, 252.5]) #, 253.5])
+                  ticks=ticks) #, 253.5])
 
 cbar.ax.tick_params(labelsize=8)
 norm = colors.BoundaryNorm(bounds, cmap.N)
-cbar.set_ticklabels(['Not Water', 
-                     'Open Water',
-                     'Partial Surface Water',
-                     'HLS Snow/Ice',
-                     'HLS Cloud/Cloud Shadow', 
-                     #'Ocean Mask'
-                    ],
+cbar.set_ticklabels(tick_labels,
                     fontsize=fontSize)   
 
 
@@ -188,7 +196,7 @@ plt.savefig(presentation_dir / 'extent.png')
 # %%
 for plot_type in ['without_mask', 'with_mask']:
     fontSize=6
-    fig, ax = plt.subplots(1, 2, dpi=150, figsize=(10, 5))
+    fig, ax = plt.subplots(1, 2, dpi=200, figsize=(10, 5))
     im=ax[0].imshow(X_dswx_c, interpolation='none',cmap=cmap,vmin=0,vmax=255)
 
     out = show(X_dswx_c, cmap=cmap, transform=p_dswx_c['transform'], interpolation='none', ax=ax[0], vmin=0,vmax=255)
@@ -218,35 +226,41 @@ for plot_type in ['without_mask', 'with_mask']:
 
     if plot_type == 'with_mask':
         show(display_mask, 
-             cmap='viridis', 
+             cmap='copper', 
              transform=p_val_r['transform'], 
              interpolation='none',
              ax=ax[0], vmin=0, vmax=1, alpha=1)
 
         show(display_mask, 
-             cmap='viridis', 
+             cmap='copper', 
              transform=p_val_r['transform'], 
              interpolation='none',
              ax=ax[1], vmin=0, vmax=1, alpha=1)
 
 
     cbar.ax.tick_params(labelsize=8)
-    bounds =  [0, 1, 2, 3, 
-               251, 252, 253, # 254
-              ]
+    if verif_params.input_product == 's1':
+        bounds =  [0, 1, 2,  4, 249, 250, 251]
+        ticks = [0.5, 1.5, 3, 249.5, 250.5]
+        tick_labels = ['Not Water', 
+                      'Open Water',
+                      'Inundated Vegetation',
+                      'HAND Mask',
+                      'Layover Mask'
+                     ]
+    elif verif_params.input_product == 'hls':
+        bounds =  [0, 1, 2, 3, 251, 252, 253]
+        ticks=[0.5, 1.5, 2.5, 251.5, 252.5]
+        tick_labels = ['Not Water', 
+                     'Open Water',
+                     'Partial Surface Water',
+                     'HLS Snow/Ice',
+                     'HLS Cloud/Cloud Shadow']
     norm = colors.BoundaryNorm(bounds, cmap.N)
     cbar=fig.colorbar(im_dswx, 
                       ax=ax, shrink=0.5, pad=0.05, boundaries=bounds, cmap=cmap, 
-                      ticks=[0.5, 1.5, 2.5, 
-                             251.5, 252.5, # 253.5
-                            ])
-    cbar.set_ticklabels(['Not Water', 
-                         'Open Water',
-                         'Partial Surface Water',
-                         'HLS Snow/Ice',
-                         'HLS Cloud/Cloud Shadow', 
-                         #'Ocean Mask'
-                        ]
+                      ticks=ticks)
+    cbar.set_ticklabels(tick_labels
                         ,fontsize=fontSize)   
 
     cbar.ax.tick_params(labelsize=8)
@@ -259,7 +273,7 @@ for plot_type in ['without_mask', 'with_mask']:
         from matplotlib.lines import Line2D
         from matplotlib import colors, colorbar, cm
         cNorm  = colors.Normalize(vmin=0, vmax=1)
-        scalarMap = cm.ScalarMappable(norm=cNorm, cmap='viridis')
+        scalarMap = cm.ScalarMappable(norm=cNorm, cmap='copper')
         legend_elements = [Line2D([0], 
                                   [0], 
                                   marker='s',
@@ -273,6 +287,90 @@ for plot_type in ['without_mask', 'with_mask']:
 
 
     plt.savefig(presentation_dir / f'comparison_resample_{plot_type}.png')
+
+# %% [markdown]
+# # FP v FN
+
+# %%
+FP = ((X_dswx_c == 1) & (X_val_r != 1) & ~dswx_mask).astype(float)
+FN = ((X_dswx_c != 1) & (X_val_r == 1) & ~dswx_mask).astype(float)
+FP.sum(), FN.sum()
+
+# %%
+fontSize=6
+fig, ax = plt.subplots(1, 2, dpi=200, figsize=(10, 5))
+
+out = show(FP, cmap='Reds', transform=p_dswx_c['transform'], interpolation='none', ax=ax[0], vmin=0,vmax=1)
+im_dswx = out.get_images()[0]
+
+ax[0].set_title(f'Commision Error for OSW in DSWx-{verif_params.input_product.upper()}',fontsize=8)
+ax[0].set_xlabel('UTM easting (meters)',fontsize=fontSize)
+ax[0].set_ylabel('UTM northing (meters)',fontsize=fontSize)
+ax[0].ticklabel_format(axis='both', style='scientific',scilimits=(0,0),useOffset=False,useMathText=True)
+ax[0].tick_params(axis='both', which='major', labelsize=fontSize)
+ax[0].yaxis.get_offset_text().set_fontsize(fontSize)
+ax[0].xaxis.get_offset_text().set_fontsize(fontSize)
+
+show(FN, cmap='Reds', transform=p_val_r['transform'], interpolation='none',ax=ax[1], vmin=0, vmax=1)
+ax[1].set_title(f'Ommission Error for OSW in DSWx-{verif_params.input_product.upper()}',fontsize=8)
+ax[1].set_xlabel('UTM easting (meters)',fontsize=fontSize)
+ax[1].set_ylabel('UTM northing (meters)',fontsize=fontSize)
+
+ax[1].ticklabel_format(axis='both', style='scientific',scilimits=(0,0),useOffset=False,useMathText=True)
+ax[1].tick_params(axis='both', which='major', labelsize=fontSize)
+ax[1].yaxis.get_offset_text().set_fontsize(fontSize)
+ax[1].xaxis.get_offset_text().set_fontsize(fontSize)
+
+display_mask = dswx_mask.astype(np.float32)
+display_mask[~dswx_mask] = np.nan
+
+
+show(display_mask, 
+         cmap='copper', 
+         transform=p_val_r['transform'], 
+         interpolation='none',
+         ax=ax[0], vmin=0, vmax=1, alpha=1)
+
+show(display_mask, 
+     cmap='copper', 
+     transform=p_val_r['transform'], 
+      interpolation='none',
+         ax=ax[1], vmin=0, vmax=1, alpha=1)
+
+
+cbar.ax.tick_params(labelsize=8)
+bounds =  [-1, 1, 2]
+ticks = [-0, 1.5]
+tick_labels = ['No Error', 
+              'Error',
+             ]
+norm = colors.BoundaryNorm(bounds, 3)
+cbar=fig.colorbar(im_dswx, 
+                  ax=ax, shrink=0.5, pad=0.05, boundaries=bounds, cmap='Reds', 
+                  ticks=ticks)
+cbar.set_ticklabels(tick_labels
+                    ,fontsize=fontSize)   
+
+cbar.ax.tick_params(labelsize=8)
+
+    
+from matplotlib.lines import Line2D
+from matplotlib import colors, colorbar, cm
+cNorm  = colors.Normalize(vmin=0, vmax=1)
+scalarMap = cm.ScalarMappable(norm=cNorm, cmap='copper')
+legend_elements = [Line2D([0], 
+                          [0], 
+                          marker='s',
+                          color='w',
+                          label='No data/Masked',
+                          markerfacecolor=scalarMap.to_rgba(1),
+                          markeredgecolor='black',
+                          alpha=1,
+                          markersize=10)]
+ax[0].legend(handles=legend_elements, loc='upper left', fontsize=6,  framealpha=1, edgecolor='white')
+
+
+plt.savefig(presentation_dir / f'omission_commission_osw_viz.png')
 
 # %% [markdown]
 # # Samples of a fixed Trial

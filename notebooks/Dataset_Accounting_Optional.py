@@ -286,7 +286,7 @@ docs_spatially_filtered = [[doc for doc in doc_group if calc_rel_spatial_coverag
 # %%
 # Gets closest date to acq (not sure about coverage over val site yet)
 default_dict = {'id': '', 'metadata': {'product_urls': []}}
-docs_best = [docs_[0] if docs_ else default_dict for docs_ in docs_filtered]
+docs_best = [docs_[0] if docs_ else default_dict for docs_ in docs_spatially_filtered]
 
 # extract, sort, filter urls
 urls_lsts = [sorted(doc['metadata']['product_urls']) for doc in docs_best]
@@ -354,7 +354,7 @@ df_suite['rtc_url_dict'] = rtc_data
 # ## Localize Data for DSWx-S1
 
 # %%
-LOCALIZE_S1_DATA = False
+LOCALIZE_S1_DATA = True
 
 # %%
 local_dswx_s1_db_dir = Path(f'opera_dswx_s1_val_db-{t.year}{t.month:02d}{t.day:02d}')
@@ -447,33 +447,3 @@ geojson_path = get_path_of_validation_geojson()
 
 # %%
 df_suite.to_file(geojson_path, driver='GeoJSON')
-
-# %%
-df_site = df_suite[df_suite.site_name == '3_28'].reset_index(drop=True)
-df_site
-
-# %%
-import matplotlib.pyplot as plt
-from shapely.geometry import box
-from rasterio.crs import CRS
-
-fig, ax = plt.subplots()
-
-url = df_site.dswx_s1_urls[0].split(' ')[0]
-with rasterio.open(url) as ds:
-    bounds = ds.bounds
-    crs=ds.crs
-    X = ds.read()
-
-df_dswx = gpd.GeoDataFrame(geometry=[box(*bounds)], crs=crs).to_crs(CRS.from_epsg(4326))
-
-df_dswx.plot(ax=ax)
-df_site.plot(ax=ax, color='black')
-
-# %%
-X[0, ...]
-
-# %%
-plt.imshow(X[0, ...], cmap='tab20c')
-
-# %%

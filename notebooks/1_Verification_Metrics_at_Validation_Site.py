@@ -59,7 +59,7 @@ from scipy.ndimage import binary_dilation
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '4_28'
+site_name = '1_41'
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]
@@ -201,6 +201,9 @@ np.unique(X_dswx_c)
 # ## Sample Plot
 #
 # This is a quick plot to visualize the products. Subsequent notebooks will finalize plots for presentations.
+
+# %%
+np.unique(X_dswx_c)
 
 # %%
 fig, ax = plt.subplots(1, 3, figsize=(15, 5))
