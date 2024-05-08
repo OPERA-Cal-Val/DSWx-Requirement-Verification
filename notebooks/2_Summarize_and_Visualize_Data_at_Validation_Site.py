@@ -37,7 +37,7 @@ import yaml
 # # Parameters
 
 # %% tags=["parameters"]
-site_name = '1_41'
+site_name = '3_4'
 yaml_file = 'verification_parameters.yml'
 prod_index = 0
 
@@ -303,7 +303,7 @@ fig, ax = plt.subplots(1, 2, dpi=200, figsize=(10, 5))
 out = show(FP, cmap='Reds', transform=p_dswx_c['transform'], interpolation='none', ax=ax[0], vmin=0,vmax=1)
 im_dswx = out.get_images()[0]
 
-ax[0].set_title(f'Commision Error for OSW in DSWx-{verif_params.input_product.upper()}',fontsize=8)
+ax[0].set_title(f'Commision Errors (i.e False Positives) \n for OSW in DSWx-{verif_params.input_product.upper()}',fontsize=8)
 ax[0].set_xlabel('UTM easting (meters)',fontsize=fontSize)
 ax[0].set_ylabel('UTM northing (meters)',fontsize=fontSize)
 ax[0].ticklabel_format(axis='both', style='scientific',scilimits=(0,0),useOffset=False,useMathText=True)
@@ -312,7 +312,7 @@ ax[0].yaxis.get_offset_text().set_fontsize(fontSize)
 ax[0].xaxis.get_offset_text().set_fontsize(fontSize)
 
 show(FN, cmap='Reds', transform=p_val_r['transform'], interpolation='none',ax=ax[1], vmin=0, vmax=1)
-ax[1].set_title(f'Ommission Error for OSW in DSWx-{verif_params.input_product.upper()}',fontsize=8)
+ax[1].set_title(f'Ommission Errors (i.e. False Negatives) \n for OSW in DSWx-{verif_params.input_product.upper()}',fontsize=8)
 ax[1].set_xlabel('UTM easting (meters)',fontsize=fontSize)
 ax[1].set_ylabel('UTM northing (meters)',fontsize=fontSize)
 
@@ -461,13 +461,13 @@ label_acronyms = ['NW', 'OSW', 'PSW'] if verif_params.input_product == 'hls' els
 label_acronyms
 
 # %%
-conf_mean = [[dict_for_conf.get(f'confusion_matrix.{label_1}_OPERA_DSWx.{label_2}_OPERA_Validation.mean', 0)
+conf_mean = [[dict_for_conf.get(f'confusion_matrix.{label_2}_OPERA_DSWx.{label_1}_OPERA_Validation.mean', 0)
                        for label_1 in labels] 
                       for label_2 in labels]
 conf_mean
 
 # %%
-conf_std = [[dict_for_conf.get(f'confusion_matrix.{label_1}_OPERA_DSWx.{label_2}_OPERA_Validation.std', 0)
+conf_std = [[dict_for_conf.get(f'confusion_matrix.{label_2}_OPERA_DSWx.{label_1}_OPERA_Validation.std', 0)
                        for label_1 in labels] 
                       for label_2 in labels]
 conf_std
@@ -614,38 +614,29 @@ with open(presentation_dir / 'areas.tex', 'w') as f:
 # ## Ommision and Commision Error
 
 # %%
-data = {key: val for (key, val) in metric_data.items()
-                if any(kw in key for kw in ['precision', 'recall'])}
-data
-
-
-# %%
-def format_label(label):
-    """get first letter for acronym"""
-    return ''.join(x[0]for x in label.split('_'))
-
-def format_metric(met):
-    return 'om' if met == 'precision' else 'co' 
-
-def get_metric(data: dict, met: str, class_label: str, stat: str):
-    if stat == 'mean':
-        return 100 - data.get(f'{met}.{class_label}.{stat}', np.nan) * 100
-    else:
-        return data.get(f'{met}.{class_label}.{stat}', np.nan) * 100
-
-om_com_data = {f'{stat[0]}_{format_metric(met)}_{format_label(class_label)}': get_metric(data, met, class_label, stat)
-              for class_label in labels
-              for stat in ['mean', 'std']
-              for met in ['precision', 'recall']}
-om_com_data = {key: f'{val:1.2f}' for key, val in om_com_data.items()}
-om_com_data
+data_om_com = {key: f'{100*val:1.1f}' for (key, val) in metric_data.items()
+                if any(kw in key for kw in ['ommission', 'commission'])}
+data_om_com
 
 # %%
 table_data = {'Class': label_acronyms,
                'Commission Error ($\%$)': [om_com_data[f'm_co_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in label_acronyms],
                'Ommision Error ($\%$)': [om_com_data[f'm_om_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in label_acronyms]
               }
+table_data
 
+# %%
+labels = ['Not_Water',  'Open_Surface_Water', 'Partial_Surface_Water'] if verif_params.input_product == 'hls' else ['Not_Water',  'Open_Surface_Water']
+labels
+
+# %%
+table_data = {'Class': label_acronyms,
+               'Commission Error ($\%$)': [data_om_com[f'commission_error.{label}.mean'] + ' (' + data_om_com[f'commission_error.{label}.std'] + ')' for label in labels],
+               'Ommision Error ($\%$)': [data_om_com[f'ommission_error.{label}.mean'] + ' (' + data_om_com[f'ommission_error.{label}.std'] + ')' for label in labels]
+              }
+table_data
+
+# %%
 df_om_co = pd.DataFrame(table_data)
 df_om_co.set_index('Class', inplace=True)
 df_om_co
