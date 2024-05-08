@@ -619,13 +619,6 @@ data_om_com = {key: f'{100*val:1.1f}' for (key, val) in metric_data.items()
 data_om_com
 
 # %%
-table_data = {'Class': label_acronyms,
-               'Commission Error ($\%$)': [om_com_data[f'm_co_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in label_acronyms],
-               'Ommision Error ($\%$)': [om_com_data[f'm_om_{l}'] + ' (' + om_com_data[f's_co_{l}'] + ')' for l in label_acronyms]
-              }
-table_data
-
-# %%
 labels = ['Not_Water',  'Open_Surface_Water', 'Partial_Surface_Water'] if verif_params.input_product == 'hls' else ['Not_Water',  'Open_Surface_Water']
 labels
 
