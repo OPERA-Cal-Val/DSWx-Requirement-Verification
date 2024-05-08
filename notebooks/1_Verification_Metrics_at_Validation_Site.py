@@ -59,7 +59,7 @@ from scipy.ndimage import binary_dilation
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '1_41'
+site_name = '3_4'
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]

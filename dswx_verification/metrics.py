@@ -33,6 +33,29 @@ def get_binary_water_acc_for_one_trial(y_val, y_dswx):
     return binary_water_acc
 
 
+def get_commission_error(y_val, y_dswx, label):
+    fp = np.sum((y_val != label) & (y_dswx == label), dtype=np.float32)
+    tp = np.sum((y_val == label) & (y_dswx == label), dtype=np.float32)
+
+    denom = tp + fp
+    if denom == 0:
+        return 0.
+    ce = fp / denom
+    return ce
+
+
+def get_ommission_error(y_val, y_dswx, label):
+    fn = np.sum((y_val == label) & (y_dswx != label), dtype=np.float32)
+    tp = np.sum((y_val == label) & (y_dswx == label), dtype=np.float32)
+
+    denom = tp + fn
+    if denom == 0:
+        return 0.
+    oe = fn / denom
+    return oe
+
+
+
 def get_prec_recall_score_for_one_trial(y_val, y_dswx):
 
     prec, recall, f1, supp = sklearn.metrics.precision_recall_fscore_support(y_val,
@@ -47,12 +70,16 @@ def get_prec_recall_score_for_one_trial(y_val, y_dswx):
     prec_per_class = {class_dict[label]: prec[label] for label in [0, 1, 2]}
     f1_per_class = {class_dict[label]: f1[label] for label in [0, 1, 2]}
     supp_per_class = {class_dict[label]: int(supp[label]) for label in [0, 1, 2]}
+    commission_error = {class_dict[label]: get_commission_error(y_val, y_dswx, label) for label in [0, 1, 2]}
+    ommission_error = {class_dict[label]: get_ommission_error(y_val, y_dswx, label) for label in [0, 1, 2]}
     binary_water_acc = get_binary_water_acc_for_one_trial(y_val, y_dswx)
     return {
             'precision': prec_per_class,
             'recall': recall_per_class,
             'f1_per_class': f1_per_class,
             'supp_per_class': supp_per_class,
+            'commission_error': commission_error,
+            'ommission_error': ommission_error,
             'binary_water_acc': binary_water_acc}
 
 

@@ -25,7 +25,7 @@ This repository is the descendent of:
 4. `python -m ipykernell install --user --name --dswx_val`
 5. `pip install .` or for development `pip install -e .`
 
-Explore the notebooks using jupyter lab. It's *important* to run jupyter through the correct environment so that jupytext will be able to load the percent files as notebooks.
+Explore the notebooks using jupyter lab. It's *important* to run jupyter through the correct environment so that jupytext will be able to load the percent files as notebooks. To get the `*.py` files in the `notebooks` directory as `*.ipynb` files, you must navigate to the directory and run `jupytext --set-formats ipynb,py:percent *.py`. If you are using VS code to run notebooks, you must install this [plugin]([plugin](https://marketplace.visualstudio.com/items?itemName=congyiwu.vscode-jupytext)) and you can open the python files as notebooks. 
 
 
 ## Latex Installation (for generating slides)
