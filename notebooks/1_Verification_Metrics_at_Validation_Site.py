@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.16.4
 #   kernelspec:
 #     display_name: dswx_val
 #     language: python
@@ -33,7 +33,9 @@ from dswx_verification import (get_validation_metadata_by_site_name,
                                get_equal_samples_per_label,
                                generate_random_indices_for_classes,
                                get_all_metrics_for_one_trial,
-                               get_geopandas_features_from_array)
+                               get_geopandas_features_from_array,
+                               get_localized_validation_table,
+                               get_path_of_validation_geojson)
 from dswx_verification.data_models import VerificationParameters
 from dswx_verification.constants import OSW_ACCURACY_REQ, PSW_ACCURACY_REQ
 import yaml
@@ -59,7 +61,7 @@ from scipy.ndimage import binary_dilation
 # We load a parameter file so it can be shared throughout the workflow.
 
 # %% tags=["parameters"]
-site_name = '3_4'
+site_name = '4_9'
 yaml_file = 'verification_parameters.yml'
 
 # %% [markdown]
@@ -525,3 +527,7 @@ json_data_f
 
 # %% editable=true slideshow={"slide_type": ""}
 json.dump(json_data_f, open(site_dir / 'trial_stats.json', 'w'), indent=2)
+
+# %%
+
+# %%

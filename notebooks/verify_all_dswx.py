@@ -1,17 +1,33 @@
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.16.4
+# ---
+
+# %%
 from pathlib import Path
 
+# %%
 import click
 import papermill as pm
 from dswx_verification import get_localized_validation_table
 from tqdm import tqdm
 
 
+# %%
 repo_dir = Path(__file__).parent.resolve().parent
 SITE_NOTEBOOKS_RELATIVE_PATHS = [repo_dir / 'notebooks/1_Verification_Metrics_at_Validation_Site.ipynb',
                                  repo_dir / 'notebooks/2_Summarize_and_Visualize_Data_at_Validation_Site.ipynb',
                                  ]
 
 
+# %%
 @click.option('--yaml_config',
               required=True,
               type=str,
@@ -39,6 +55,7 @@ def main(yaml_config: str,
 
     df_val = get_localized_validation_table()
     site_names = df_val.site_name.tolist()
+    #site_names.remove('2_1')
     if sites:
         valid_sites = [site in site_names for site in sites]
         if not all(valid_sites):
@@ -71,5 +88,6 @@ def main(yaml_config: str,
                         parameters=dict(yaml_file=yaml_config))
 
 
+# %%
 if __name__ == '__main__':
     main()
